@@ -1,8 +1,8 @@
 import argparse
 import numpy as np 
 import pandas as pd 
+import os
 from biopandas.mol2 import PandasMol2
-import networkx as nx 
 from torch.utils.data import Dataset, DataLoader
 
 """
@@ -14,6 +14,41 @@ Questions before starting:
  3. Batch?
  4. Normalize features?
 """
+
+
+def get_args():
+    parser = argparse.ArgumentParser('python')
+    parser.add_argument('-op',
+                        default='control_vs_heme',
+                        required=False,
+                        choices = ['control_vs_heme', 'control_vs_nucleotide', 'heme_vs_nucleotide'],
+                        help="'control_vs_heme', 'control_vs_nucleotide', 'heme_vs_nucleotide'")
+    parser.add_argument('-root_dir',
+                        default='../MolNet-data/',
+                        required=False,
+                        help='directory to load data for 5-fold cross-validation.')   
+    parser.add_argument('-result_file_suffix',
+                        default='default_run',
+                        required=False,
+                        help='suffix to result file')                        
+    parser.add_argument('-batch_size',
+                        type=int,
+                        default=32,
+                        required=False,
+                        help='the batch size, normally 2^n.')
+    parser.add_argument('-num_control',
+                        default=74784,
+                        required=False,
+                        help='number of control data points, used to calculate the positive weight for the loss function')
+    parser.add_argument('-num_heme',
+                        default=22944,
+                        required=False,
+                        help='number of heme data points, used to calculate the positive weight for the loss function.')
+    parser.add_argument('-num_nucleotide',
+                        default=59664,
+                        required=False,
+                        help='number of num_nucleotide data points, used to calculate the positive weight for the loss function.')
+    return parser.parse_args()
 
 
 class MolDatasetCV(Dataset):
@@ -74,24 +109,22 @@ class MolDatasetCV(Dataset):
         Args:
             idx: index of the image
         """
-        #if torch.is_tensor(idx):
-        #    idx = idx.tolist()
-
-        # get image directory
+        # get dataframe directory
         folder_idx, sub_idx = self.__locate_file(idx)
-        img_dir = self.list_of_files_list[folder_idx][sub_idx]
+        mol_dir = self.list_of_files_list[folder_idx][sub_idx]
         
-        # read image
-        image = io.imread(img_dir)
+        print('mol file to read: ', mol_dir)
+        # read dataframe
+        mol_df = self.__read_mol(mol_dir)
 
         # get label 
         label = self.__get_class_int(folder_idx)
 
         # apply transform to PIL image if applicable
-        if self.transform:
-            image = self.transform(image)
+        #if self.transform:
+        #    image = self.transform(image)
 
-        return image, label
+        return mol_df, label
 
     def __locate_file(self, idx):
         """
@@ -119,14 +152,30 @@ class MolDatasetCV(Dataset):
         return self.folder_classes[folder_idx]
 
 
-def read_mol(mol_path):
-    """
-    Read the mol2 file as a dataframe.
-    """
-    mol2 = PandasMol2().read_mol2(mol_path)
-    atoms = mol2.df[['atom_id','subst_name', 'atom_type', 'atom_name', 'x', 'y', 'z', 'charge']]
-    atoms.columns = ['atom_id',colorby_conv(colorby), 'atom_type', 'atom_name', 'x', 'y', 'z', 'relative_charge']
-    atoms['atom_id'] = atoms['atom_id'].astype(str)
-
+    def __read_mol(self, mol_path):
+        """
+        Read the mol2 file as a dataframe.
+        """
+        mol2 = PandasMol2().read_mol2(mol_path)
+        atoms = mol2.df[['atom_id','subst_name', 'atom_type', 'atom_name', 'x', 'y', 'z', 'charge']]
+        #print(atoms)
+        return atoms
 
 if __name__ == "__main__":
+    args = get_args()
+    op = args.op    
+    root_dir = args.root_dir
+    result_file_suffix = args.result_file_suffix
+    batch_size = args.batch_size
+    print('data directory:', root_dir)
+    print('batch size: ', batch_size)
+    num_control = args.num_control
+    num_heme = args.num_heme
+    num_nucleotide = args.num_nucleotide
+
+    training_folds = [1,2,3,4]
+    val_fold = 5
+    #training_set = BionoiDatasetCV(op=op, root_dir=root_dir, folds=training_folds)
+    val_set = MolDatasetCV(op=op, root_dir=root_dir, folds=[val_fold])
+    print(val_set[0])
+    
