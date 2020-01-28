@@ -123,8 +123,10 @@ def read_mol(mol_path):
     """
     Read the mol2 file as a dataframe.
     """
-    mol2 = PandasMol2().read_mol2(bs)
+    mol2 = PandasMol2().read_mol2(mol_path)
     atoms = mol2.df[['atom_id','subst_name', 'atom_type', 'atom_name', 'x', 'y', 'z', 'charge']]
+    atoms.columns = ['atom_id',colorby_conv(colorby), 'atom_type', 'atom_name', 'x', 'y', 'z', 'relative_charge']
+    atoms['atom_id'] = atoms['atom_id'].astype(str)
 
 
 if __name__ == "__main__":
