@@ -178,8 +178,20 @@ class MolDatasetCV(Dataset):
 
     def __form_graph(self, atoms):
         """
-        Form a graph data structure according to the input data frame.
+        Form a graph data structure (Pytorch geometric) according to the input data frame.
+        Rule: Each atom represents a node. If the distance between two atoms are less than or 
+        equal to 4.5 Angstrom (may become a tunable hyper-parameter in the future), then an 
+        undirected edge is formed between these two atoms. 
+
+        Input:
+        atoms: dataframe containing the 3-d coordinates of atoms.
+
+        Output:
+        A Pytorch-gemometric graph data with following contents:
+            - node_attr (Pytorch Tensor): Node feature matrix with shape [num_nodes, num_node_features].
+            - edge_index (Pytorch LongTensor): Graph connectivity in COO format with shape [2, num_edges].
         """
+
 
 if __name__ == "__main__":
     pd.options.display.max_rows = 999
