@@ -3,7 +3,9 @@ import numpy as np
 import pandas as pd 
 import os
 from biopandas.mol2 import PandasMol2
-from torch.utils.data import Dataset, DataLoader
+#from torch.utils.data import Dataset, DataLoader
+from torch_geometric.data import Dataset
+
 
 """
 Questions before starting: 
@@ -59,14 +61,24 @@ class MolDatasetCV(Dataset):
         """
         Args:
             op: operation mode, heme_vs_nucleotide, control_vs_heme or control_vs_nucleotide. 
-            root_dir: folder containing all images.
+            root_dir: folder containing all mol files.
             folds: a list containing folds to generate training data, for example [1,2,3,4], [5].
-            transform: transform to be applied to images.
+            transform: transform to be applied to graphs.
         """
         self.op = op
         self.root_dir = root_dir
         self.folds = folds
         self.transform = transform
+        self.hydrophobicity = {'ALA':1.8,'ARG':-4.5,'ASN':-3.5,'ASP':-3.5,
+                               'CYS':2.5,'GLN':-3.5,'GLU':-3.5,'GLY':-0.4,
+                               'HIS':-3.2,'ILE':4.5,'LEU':3.8,'LYS':-3.9,
+                               'MET':1.9,'PHE':2.8,'PRO':-1.6,'SER':-0.8,
+                               'THR':-0.7,'TRP':-0.9,'TYR':-1.3,'VAL':4.2}
+        self.binding_probability = {'ALA':0.701,'ARG':0.916,'ASN':0.811,'ASP':1.015,
+                                    'CYS':1.650,'GLN':0.669,'GLU':0.956,'GLY':0.788,
+                                    'HIS':2.286,'ILE':1.006,'LEU':1.045,'LYS':0.468,
+                                    'MET':1.894,'PHE':1.952,'PRO':0.212,'SER':0.883,
+                                    'THR':0.730,'TRP':3.084,'TYR':1.672,'VAL':0.884}
         print('--------------------------------------------------------')
         if len(folds) == 1:
             print('generating validation dataset...')
@@ -156,12 +168,21 @@ class MolDatasetCV(Dataset):
         """
         Read the mol2 file as a dataframe.
         """
-        mol2 = PandasMol2().read_mol2(mol_path)
-        atoms = mol2.df[['atom_id','subst_name', 'atom_type', 'atom_name', 'x', 'y', 'z', 'charge']]
-        #print(atoms)
+        atoms = PandasMol2().read_mol2(mol_path)
+        atoms = atoms.df[['atom_id','subst_name', 'atom_type', 'atom_name', 'x', 'y', 'z', 'charge']]
+        atoms['residue'] = atoms['subst_name'].apply(lambda x: x[0:3])
+        atoms['hydrophobicity'] = atoms['residue'].apply(lambda x: self.hydrophobicity[x])
+        atoms['binding_probability'] = atoms['residue'].apply(lambda x: self.binding_probability[x])
+        atoms = atoms[['atom_type', 'residue', 'x', 'y', 'z', 'charge', 'hydrophobicity', 'binding_probability']]
         return atoms
 
+    def __form_graph(self, atoms):
+        """
+        Form a graph data structure according to the input data frame.
+        """
+
 if __name__ == "__main__":
+    pd.options.display.max_rows = 999
     args = get_args()
     op = args.op    
     root_dir = args.root_dir
