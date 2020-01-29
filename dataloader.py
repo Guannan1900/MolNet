@@ -93,7 +93,7 @@ class MolDatasetCV(Dataset):
             self.class_name_to_int[self.pocket_classes[i]] = i
         print('class name to integer map: ', self.class_name_to_int)
 
-        self.folder_dirs = [] # directory of folders containing training images                                 
+        self.folder_dirs = [] # directory of folders containing training data                                 
         self.folder_classes = [] # list of classes of each folder, integer        
         for pocket_class in self.pocket_classes:
             for fold in self.folds:
@@ -119,7 +119,7 @@ class MolDatasetCV(Dataset):
         """
         Built-in function to retrieve item(s) in the dataset.
         Args:
-            idx: index of the image
+            idx: index of the data
         """
         # get dataframe directory
         folder_idx, sub_idx = self.__locate_file(idx)
@@ -132,9 +132,9 @@ class MolDatasetCV(Dataset):
         # get label 
         label = self.__get_class_int(folder_idx)
 
-        # apply transform to PIL image if applicable
+        # apply transform to PIL data if applicable
         #if self.transform:
-        #    image = self.transform(image)
+        #    mol = self.transform(mol)
 
         return mol_df, label
 
