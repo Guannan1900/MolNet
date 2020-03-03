@@ -203,6 +203,25 @@ class MolDatasetCV(Dataset):
         """
 
 
+def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, shuffle=True, num_workers=1):
+    """
+    Function to generate dataloaders for cross validation
+    Args:
+        op: operation mode, heme_vs_nucleotide, control_vs_heme or control_vs_nucleotide. 
+        root_dir : folder containing all images.
+        training_folds: list of integers indicating the folds, e.g: [1,2,3,4]
+        val_fold: integer, which fold is used for validation, the other folds are used for training. e.g: 5
+        batch_size: integer, number of data sent to GNN.
+    """
+
+    training_set = MolDatasetCV(op=op, root_dir=root_dir, folds=training_folds)
+    val_set = MolDatasetCV(op=op, root_dir=root_dir, folds=[val_fold])
+    train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+
+    return train_loader, val_loader
+
+
 if __name__ == "__main__":
     pd.options.display.max_rows = 999
     args = get_args()
