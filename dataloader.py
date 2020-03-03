@@ -4,16 +4,19 @@ import pandas as pd
 import os
 from biopandas.mol2 import PandasMol2
 #from torch.utils.data import Dataset, DataLoader
-from torch_geometric.data import Dataset
+from torch_geometric.data import Data, Dataset
+from torch_geometric.data import DataLoader
 
 
 """
 Questions before starting: 
  1. How to represent graph data structure? NetworkX or Pytorch geometric data?
-    - use NextworkX first then convert to Pytorch geometric data format.
+    - Don't need to manipulate the graph, so the dataset should directly output Pytorch geometric data.
  2. Pandas or BioPandas?
     - BioPandas
  3. Batch?
+    - To implement batch, just use DataLoader from Pytorch geometric to wrap the datasets object. However, whether to 
+      use mini-batch data is not determined yet.
  4. Normalize features?
 """
 
@@ -188,8 +191,15 @@ class MolDatasetCV(Dataset):
 
         Output:
         A Pytorch-gemometric graph data with following contents:
-            - node_attr (Pytorch Tensor): Node feature matrix with shape [num_nodes, num_node_features].
-            - edge_index (Pytorch LongTensor): Graph connectivity in COO format with shape [2, num_edges].
+            - node_attr (Pytorch Tensor): Node feature matrix with shape [num_nodes, num_node_features]. e.g.,
+              x = torch.tensor([[-1], [0], [1]], dtype=torch.float)
+
+            - edge_index (Pytorch LongTensor): Graph connectivity in COO format with shape [2, num_edges*2]. e.g.,
+              edge_index = torch.tensor([[0, 1, 1, 2],
+                                         [1, 0, 2, 1]], dtype=torch.long)
+        
+        Forming the final output graph:
+            data = Data(x=x, edge_index=edge_index)
         """
 
 
