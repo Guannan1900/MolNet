@@ -12,7 +12,7 @@ dataset = TUDataset(path, name='MUTAG').shuffle()
 test_dataset = dataset[:len(dataset) // 10]
 train_dataset = dataset[len(dataset) // 10:]
 test_loader = DataLoader(test_dataset, batch_size=128)
-train_loader = DataLoader(train_dataset, batch_size=64)
+train_loader = DataLoader(train_dataset, batch_size=128)
 print('number of features:', dataset.num_features)
 print('number of classes:', dataset.num_classes)
 print('number of training data:', len(train_dataset))
@@ -84,7 +84,10 @@ def train(epoch):
         data = data.to(device)
         optimizer.zero_grad()
         output = model(data.x, data.edge_index, data.batch)
+        #print(output)
+        #print(data.y)
         loss = F.nll_loss(output, data.y)
+        #print(loss)
         loss.backward()
         loss_all += loss.item() * data.num_graphs
         optimizer.step()

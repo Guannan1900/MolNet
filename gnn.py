@@ -49,8 +49,6 @@ def get_args():
 class Net(torch.nn.Module):
     def __init__(self, num_features, dim):
         super(Net, self).__init__()
-        self.num_features = num_features
-        self.dim = dim
         '''
         num_features = dataset.num_features
         dim = 32
