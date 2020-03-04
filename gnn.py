@@ -6,6 +6,7 @@ https://github.com/rusty1s/pytorch_geometric/blob/master/examples/mutag_gin.py
 """
 import argparse
 import torch
+import torch.nn.functional as F
 from torch.nn import Sequential, Linear, ReLU
 from dataloader import gen_loaders
 from torch_geometric.nn import GINConv, global_add_pool
@@ -46,12 +47,14 @@ def get_args():
 
 
 class Net(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, num_features, dim):
         super(Net, self).__init__()
-
+        self.num_features = num_features
+        self.dim = dim
+        '''
         num_features = dataset.num_features
         dim = 32
-
+        '''
         nn1 = Sequential(Linear(num_features, dim), ReLU(), Linear(dim, dim))
         self.conv1 = GINConv(nn1)
         self.bn1 = torch.nn.BatchNorm1d(dim)
@@ -95,13 +98,16 @@ class Net(torch.nn.Module):
 
 def train(epoch):
     """
+    Train the model for 1 epoch, then return the averaged loss of the data 
+    in this epoch.
+    Global vars: train_loader, device, optimizer, model
     """
     model.train()
-
+    '''
     if epoch == 51:
         for param_group in optimizer.param_groups:
             param_group['lr'] = 0.5 * param_group['lr']
-
+    '''
     loss_total = 0
     for data in train_loader:
         data = data.to(device)
@@ -112,7 +118,7 @@ def train(epoch):
         loss_total += loss.item() * data.num_graphs
         optimizer.step()
     return loss_total / len(train_dataset)
-    
+
 
 if __name__ == "__main__":
     torch.manual_seed(42)
