@@ -74,7 +74,7 @@ class Net(torch.nn.Module):
         self.bn5 = torch.nn.BatchNorm1d(dim)
 
         self.fc1 = Linear(dim, dim)
-        self.fc2 = Linear(dim, dataset.num_classes)
+        self.fc2 = Linear(dim, 2) # binary classification, softmax is used instead of sigmoid here.
 
     def forward(self, x, edge_index, batch):
         x = F.relu(self.conv1(x, edge_index))
@@ -98,7 +98,7 @@ def train(epoch):
     """
     Train the model for 1 epoch, then return the averaged loss of the data 
     in this epoch.
-    Global vars: train_loader, device, optimizer, model
+    Global vars: train_loader, train_size, device, optimizer, model
     """
     model.train()
     '''
@@ -107,6 +107,7 @@ def train(epoch):
             param_group['lr'] = 0.5 * param_group['lr']
     '''
     loss_total = 0
+    correct = 0
     for data in train_loader:
         data = data.to(device)
         optimizer.zero_grad()
@@ -115,7 +116,32 @@ def train(epoch):
         loss.backward()
         loss_total += loss.item() * data.num_graphs
         optimizer.step()
-    return loss_total / len(train_dataset)
+        pred = output.max(dim=1)[1]
+        correct += pred.eq(data.y).sum().item()
+    train_loss = loss_total / train_size # averaged training loss
+    acc = correct / train_size # accuracy        
+    return train_loss, acc
+
+
+def validate():
+    """
+    Returns loss and accuracy on validation set.
+    Global vars: val_loader, val_size, device, model
+    """
+    model.eval()
+
+    loss_total = 0
+    correct = 0
+    for data in val_loader:
+        data = data.to(device)
+        output = model(data.x, data.edge_index, data.batch)
+        loss = F.nll_loss(output, data.y)
+        loss_total += loss.item() * data.num_graphs
+        pred = output.max(dim=1)[1]
+        correct += pred.eq(data.y).sum().item()
+    val_loss = loss_total / val_size # averaged training loss
+    acc = correct / val_size # accuracy        
+    return val_loss, acc
 
 
 if __name__ == "__main__":
@@ -130,7 +156,8 @@ if __name__ == "__main__":
     num_control = args.num_control
     num_heme = args.num_heme
     num_nucleotide = args.num_nucleotide
-    
+    num_epoch = 100 # number of epochs to train
+
     # cpu or gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -143,12 +170,15 @@ if __name__ == "__main__":
         folds = [1, 2, 3, 4, 5]
         val_fold = i+1
         folds.remove(val_fold)
-        train_loader, val_loader = gen_loaders(op, root_dir, folds, val_fold, batch_size, shuffle=True, num_workers=1)
+        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size, shuffle=True, num_workers=1)
 
         # model
-        model = Net().to(device)
+        model = Net(num_features=3, dim=16).to(device)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-
+        for epoch in range(1, 1 + num_epoch):
+            train_loss, train_acc = train(epoch)
+            val_loss, val_acc = validate()
+            print('Epoch: {:03d}, Train Loss: {:.7f}, Train Acc: {:.7f}, Val Loss: {:.7f}, Val Acc: {:.7f}'.format(epoch, train_loss, train_acc, val_loss, val_acc))
         break

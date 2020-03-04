@@ -219,7 +219,7 @@ def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, shuffle=True
     train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
-    return train_loader, val_loader
+    return train_loader, val_loader, len(training_set), len(val_set)
 
 
 if __name__ == "__main__":
