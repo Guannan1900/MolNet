@@ -22,6 +22,7 @@ Forming the final output graph:
 import numpy as np 
 from biopandas.mol2 import PandasMol2
 import pandas as pd
+from scipy.spatial import distance
 
 if __name__ == "__main__":
     pd.options.display.max_rows = 999
@@ -47,3 +48,29 @@ if __name__ == "__main__":
     print(atoms)
 
     # calculate the pair-wise distances and forming edges
+    print('size of atom is:', len(atoms))
+    print('type of atoms is:', type(atoms))
+    print('first element is :', atoms.loc[0]['x':'z'])
+
+    # distance between the first and second values
+    dist = np.linalg.norm(atoms.loc[0]['x':'z']-atoms.loc[1]['x':'z'])
+    print('distance between the first 2 values:', dist)
+
+    # distance between the first and third values
+    dist0 = np.linalg.norm(atoms.loc[0]['x':'z']-atoms.loc[2]['x':'z'])
+    print('distance between the first and third values:', dist0)
+
+    # small matrix
+    A = atoms.loc[0:2,'x':'z']
+    print('A is:', A)
+    A_dist2 = distance.cdist(A, A, 'euclidean')
+    print('distance between the matrix A:', '\n', A_dist2)
+
+    # conditional return 
+    threshold_indices = A_dist2 > 2
+    A_dist2[threshold_indices] = 0
+    print('After threshold, distance matrix A:', '\n', A_dist2)
+
+
+
+
