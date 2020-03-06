@@ -62,7 +62,7 @@ if __name__ == "__main__":
     print('distance between the first and third values:', dist0)
 
     # small matrix
-    A = atoms.loc[0:3,'x':'z'] 
+    A = atoms.loc[0:6,'x':'z'] 
     print('A is:', A)
     A_dist2 = distance.cdist(A, A, 'euclidean')
     print('distance between the matrix A:', '\n', A_dist2)
