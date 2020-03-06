@@ -49,32 +49,16 @@ if __name__ == "__main__":
     print(atoms)
 
     # calculate the pair-wise distances and forming edges
-    print('size of atom is:', len(atoms))
-    print('type of atoms is:', type(atoms))
-    print('first element is :', atoms.loc[0]['x':'z'])
 
-    # distance between the first and second values
-    dist = np.linalg.norm(atoms.loc[0]['x':'z']-atoms.loc[1]['x':'z'])
-    print('distance between the first 2 values:', dist)
-
-    # distance between the first and third values
-    dist0 = np.linalg.norm(atoms.loc[0]['x':'z']-atoms.loc[2]['x':'z'])
-    print('distance between the first and third values:', dist0)
-
-    # small matrix
+    # small matrix which only covers the sample from 0-6 and with the x-z attributes
     A = atoms.loc[0:6,'x':'z'] 
-    print('A is:', A)
+
+    # the distance matrix 
     A_dist2 = distance.cdist(A, A, 'euclidean')
-    print('distance between the matrix A:', '\n', A_dist2)
 
     # set the element whose value is larger than threshold to 0
     threshold_indices = A_dist2 > 2
     A_dist2[threshold_indices] = 0
-    print('After threshold, distance matrix A:', '\n', A_dist2)
-
-    # choose the element whose value is larger than 0
-    A_dist2[A_dist2 >0]
-    print('select positive, distance matrix A:', '\n', A_dist2)
 
     result = np.where(A_dist2 > 0)
     print('Tuple of arrays returned:', '\n', result)
@@ -85,14 +69,14 @@ if __name__ == "__main__":
 
     # whole sample matrix
     A_whole = atoms.loc[:,'x':'z'] 
-    print('A is:', A_whole)
+  
+    # the distance matrix
     A_whole_dist = distance.cdist(A_whole, A_whole, 'euclidean')
-    print('distance between the matrix A:', '\n', A_whole_dist)
+  
 
     # set the element whose value is larger than threshold to 0
     threshold_condition = A_whole_dist > 4.5
     A_whole_dist[threshold_condition] = 0
-    print('After threshold, distance matrix A:', '\n', A_whole_dist)
 
     result_whole = np.where(A_whole_dist > 0)
     print('Tuple of arrays returned:', '\n', result_whole)
