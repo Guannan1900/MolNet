@@ -23,6 +23,7 @@ import numpy as np
 from biopandas.mol2 import PandasMol2
 import pandas as pd
 from scipy.spatial import distance
+import sys
 
 if __name__ == "__main__":
     pd.options.display.max_rows = 999
@@ -78,6 +79,23 @@ if __name__ == "__main__":
     result = np.where(A_dist2 > 0)
     print('Tuple of arrays returned:', '\n', result)
 
+    print('================================================================')
+    # show the entire array without truncation ...
+    np.set_printoptions(threshold=sys.maxsize)
+
+    # whole sample matrix
+    A_whole = atoms.loc[:,'x':'z'] 
+    print('A is:', A_whole)
+    A_whole_dist = distance.cdist(A_whole, A_whole, 'euclidean')
+    print('distance between the matrix A:', '\n', A_whole_dist)
+
+    # set the element whose value is larger than threshold to 0
+    threshold_condition = A_whole_dist > 4.5
+    A_whole_dist[threshold_condition] = 0
+    print('After threshold, distance matrix A:', '\n', A_whole_dist)
+
+    result_whole = np.where(A_whole_dist > 0)
+    print('Tuple of arrays returned:', '\n', result_whole)
 
 
 
