@@ -61,15 +61,22 @@ if __name__ == "__main__":
     print('distance between the first and third values:', dist0)
 
     # small matrix
-    A = atoms.loc[0:2,'x':'z']
+    A = atoms.loc[0:3,'x':'z'] 
     print('A is:', A)
     A_dist2 = distance.cdist(A, A, 'euclidean')
     print('distance between the matrix A:', '\n', A_dist2)
 
-    # conditional return 
+    # set the element whose value is larger than threshold to 0
     threshold_indices = A_dist2 > 2
     A_dist2[threshold_indices] = 0
     print('After threshold, distance matrix A:', '\n', A_dist2)
+
+    # choose the element whose value is larger than 0
+    A_dist2[A_dist2 >0]
+    print('select positive, distance matrix A:', '\n', A_dist2)
+
+    result = np.where(A_dist2 > 0)
+    print('Tuple of arrays returned:', '\n', result)
 
 
 
