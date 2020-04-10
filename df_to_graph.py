@@ -61,7 +61,9 @@ if __name__ == "__main__":
     A_dist2[threshold_indices] = 0
 
     result = np.where(A_dist2 > 0)
-    print('Tuple of arrays returned:', '\n', result)
+
+    result_oneArray = np.vstack((result[0],result[1]))
+    print('One array returned:', '\n', result_oneArray)
 
     print('================================================================')
     # show the entire array without truncation ...
@@ -79,7 +81,9 @@ if __name__ == "__main__":
     A_whole_dist[threshold_condition] = 0
 
     result_whole = np.where(A_whole_dist > 0)
-    print('Tuple of arrays returned:', '\n', result_whole)
+    result_whole_oneArray = np.vstack((result_whole[0],result_whole[1]))
+    print('Whole one array returned:', '\n', result_whole_oneArray)
+
 
 
 
