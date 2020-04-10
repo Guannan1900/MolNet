@@ -179,7 +179,7 @@ class MolDatasetCV(Dataset):
         atoms = atoms[['atom_type', 'residue', 'x', 'y', 'z', 'charge', 'hydrophobicity', 'binding_probability']]
         return atoms
 
-    def __form_graph(self, atoms):
+    def __form_graph(self, atoms, threshold):
         """
         Form a graph data structure (Pytorch geometric) according to the input data frame.
         Rule: Each atom represents a node. If the distance between two atoms are less than or 
@@ -201,6 +201,19 @@ class MolDatasetCV(Dataset):
         Forming the final output graph:
             data = Data(x=x, edge_index=edge_index)
         """
+        # sample matrix
+        A = atoms.loc[:,'x':'z'] 
+  
+        # the distance matrix
+        A_dist = distance.cdist(A, A, 'euclidean')
+
+        # set the element whose value is larger than threshold to 0
+        threshold_condition = A_dist > threshold
+        A_dist[threshold_condition] = 0
+
+        result = np.where(A_dist > 0)
+        result_oneArray = np.vstack((result[0],result[1]))
+
 
 
 def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, shuffle=True, num_workers=1):
