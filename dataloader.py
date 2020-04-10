@@ -6,6 +6,7 @@ from biopandas.mol2 import PandasMol2
 #from torch.utils.data import Dataset, DataLoader
 from torch_geometric.data import Data, Dataset
 from torch_geometric.data import DataLoader
+from scipy.spatial import distance
 
 
 """
@@ -28,27 +29,33 @@ def get_args():
                         required=False,
                         choices = ['control_vs_heme', 'control_vs_nucleotide', 'heme_vs_nucleotide'],
                         help="'control_vs_heme', 'control_vs_nucleotide', 'heme_vs_nucleotide'")
+
     parser.add_argument('-root_dir',
                         default='../MolNet-data/',
                         required=False,
                         help='directory to load data for 5-fold cross-validation.')   
+    
     parser.add_argument('-result_file_suffix',
                         default='default_run',
                         required=False,
                         help='suffix to result file')                        
+    
     parser.add_argument('-batch_size',
                         type=int,
                         default=32,
                         required=False,
                         help='the batch size, normally 2^n.')
+    
     parser.add_argument('-num_control',
                         default=74784,
                         required=False,
                         help='number of control data points, used to calculate the positive weight for the loss function')
+    
     parser.add_argument('-num_heme',
                         default=22944,
                         required=False,
                         help='number of heme data points, used to calculate the positive weight for the loss function.')
+    
     parser.add_argument('-num_nucleotide',
                         default=59664,
                         required=False,
@@ -60,7 +67,7 @@ class MolDatasetCV(Dataset):
     """
     Dataset for MolNet, can be used to load multiple folds for training or single fold for validation and testing
     """
-    def __init__(self, op, root_dir, folds, transform=None):
+    def __init__(self, op, root_dir, folds, threshold, transform=None):
         """
         Args:
             op: operation mode, heme_vs_nucleotide, control_vs_heme or control_vs_nucleotide. 
@@ -71,6 +78,7 @@ class MolDatasetCV(Dataset):
         self.op = op
         self.root_dir = root_dir
         self.folds = folds
+        self.threshold = threshold
         self.transform = transform
         self.hydrophobicity = {'ALA':1.8,'ARG':-4.5,'ASN':-3.5,'ASP':-3.5,
                                'CYS':2.5,'GLN':-3.5,'GLU':-3.5,'GLY':-0.4,
@@ -177,6 +185,7 @@ class MolDatasetCV(Dataset):
         atoms['hydrophobicity'] = atoms['residue'].apply(lambda x: self.hydrophobicity[x])
         atoms['binding_probability'] = atoms['residue'].apply(lambda x: self.binding_probability[x])
         atoms = atoms[['atom_type', 'residue', 'x', 'y', 'z', 'charge', 'hydrophobicity', 'binding_probability']]
+        atoms_graph = self.__form_graph(atoms, self.threshold)
         return atoms
 
     def __form_graph(self, atoms, threshold):
@@ -213,6 +222,8 @@ class MolDatasetCV(Dataset):
 
         result = np.where(A_dist > 0)
         result_oneArray = np.vstack((result[0],result[1]))
+        print(result_oneArray)
+        return None
 
 
 
@@ -248,9 +259,11 @@ if __name__ == "__main__":
     num_heme = args.num_heme
     num_nucleotide = args.num_nucleotide
 
+    threshold = 4.5 # ångström
+
     training_folds = [1,2,3,4]
     val_fold = 5
     #training_set = BionoiDatasetCV(op=op, root_dir=root_dir, folds=training_folds)
-    val_set = MolDatasetCV(op=op, root_dir=root_dir, folds=[val_fold])
+    val_set = MolDatasetCV(op=op, root_dir=root_dir, threshold=threshold, folds=[val_fold])
     print(val_set[0])
     
