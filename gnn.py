@@ -170,9 +170,8 @@ if __name__ == "__main__":
         folds = [1, 2, 3, 4, 5]
         val_fold = i+1
         folds.remove(val_fold)
-        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size, shuffle=True, num_workers=1)
+        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size, threshold=4.5, shuffle=True, num_workers=1)
 
-        # model
         model = Net(num_features=3, dim=16).to(device)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)

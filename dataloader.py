@@ -43,7 +43,7 @@ def get_args():
     
     parser.add_argument('-batch_size',
                         type=int,
-                        default=32,
+                        default=2,
                         required=False,
                         help='the batch size, normally 2^n.')
     
@@ -134,14 +134,18 @@ class MolDatasetCV(Dataset):
             idx: index of the data
         """
         folder_idx, sub_idx = self.__locate_file(idx) # get dataframe directory
+        print('folder_idx:', folder_idx)
+        print('sub_idx:', sub_idx)
+
         mol_dir = self.list_of_files_list[folder_idx][sub_idx] # get dataframe directory
         print('mol file to read: ', mol_dir)
-        mol_df = self.__read_mol(mol_dir) # read dataframe as pytorch-geometric graph data
         label = self.__get_class_int(folder_idx) # get label 
+        print('label:', label)
+        graph_data = self.__read_mol(mol_dir, label) # read dataframe as pytorch-geometric graph data
         # apply transform to PIL data if applicable
         #if self.transform:
         #    mol = self.transform(mol)
-        return mol_df, label
+        return graph_data
 
     def __locate_file(self, idx):
         """
@@ -155,10 +159,6 @@ class MolDatasetCV(Dataset):
             up += self.folder_dirs_lengths[i]
             if idx >= low and idx <up:
                 sub_idx = idx - low
-                #print('folder:', i)
-                #print('sub_idx:', sub_idx)
-                #print('low:', low)
-                #print('up', up)
                 return i, sub_idx
             low = up  
 
@@ -168,8 +168,7 @@ class MolDatasetCV(Dataset):
         """
         return self.folder_classes[folder_idx]
 
-
-    def __read_mol(self, mol_path):
+    def __read_mol(self, mol_path, label):
         """
         Read the mol2 file as a dataframe.
         """
@@ -179,10 +178,10 @@ class MolDatasetCV(Dataset):
         atoms['hydrophobicity'] = atoms['residue'].apply(lambda x: self.hydrophobicity[x])
         atoms['binding_probability'] = atoms['residue'].apply(lambda x: self.binding_probability[x])
         atoms = atoms[['atom_type', 'residue', 'x', 'y', 'z', 'charge', 'hydrophobicity', 'binding_probability']]
-        atoms_graph = self.__form_graph(atoms, self.threshold)
+        atoms_graph = self.__form_graph(atoms, self.threshold, label)
         return atoms_graph
 
-    def __form_graph(self, atoms, threshold):
+    def __form_graph(self, atoms, threshold, label):
         """
         Form a graph data structure (Pytorch geometric) according to the input data frame.
         Rule: Each atom represents a node. If the distance between two atoms are less than or 
@@ -191,6 +190,8 @@ class MolDatasetCV(Dataset):
 
         Input:
         atoms: dataframe containing the 3-d coordinates of atoms.
+        threshold: distance threshold to form the edge (chemical bond).
+        label: class of the data point.
 
         Output:
         A Pytorch-gemometric graph data with following contents:
@@ -204,15 +205,12 @@ class MolDatasetCV(Dataset):
         Forming the final output graph:
             data = Data(x=x, edge_index=edge_index)
         """
-        # sample matrix
-        A = atoms.loc[:,'x':'z'] 
+        A = atoms.loc[:,'x':'z'] # sample matrix
   
-        # the distance matrix
-        A_dist = distance.cdist(A, A, 'euclidean')
+        A_dist = distance.cdist(A, A, 'euclidean') # the distance matrix
 
-        # set the element whose value is larger than threshold to 0
-        threshold_condition = A_dist > threshold
-        A_dist[threshold_condition] = 0
+        threshold_condition = A_dist > threshold # set the element whose value is larger than threshold to 0
+        A_dist[threshold_condition] = 0 # set the element whose value is larger than threshold to 0
 
         result = np.where(A_dist > 0)
         result = np.vstack((result[0],result[1]))
@@ -221,12 +219,13 @@ class MolDatasetCV(Dataset):
         #print(edge_index)
         node_features = torch.tensor(atoms[['charge', 'hydrophobicity', 'binding_probability']].to_numpy(), dtype=float)
         #print(node_features)
-        data = Data(x=node_features, edge_index=edge_index)
+        label = torch.tensor([label], dtype=float)
+        print(label)
+        data = Data(x=node_features, y=label, edge_index=edge_index)
         return data
 
 
-
-def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, shuffle=True, num_workers=1):
+def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, threshold, shuffle=True, num_workers=1):
     """
     Function to generate dataloaders for cross validation
     Args:
@@ -236,8 +235,8 @@ def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, shuffle=True
         val_fold: integer, which fold is used for validation, the other folds are used for training. e.g: 5
         batch_size: integer, number of data sent to GNN.
     """
-    training_set = MolDatasetCV(op=op, root_dir=root_dir, folds=training_folds)
-    val_set = MolDatasetCV(op=op, root_dir=root_dir, folds=[val_fold])
+    training_set = MolDatasetCV(op=op, root_dir=root_dir, folds=training_folds, threshold=threshold)
+    val_set = MolDatasetCV(op=op, root_dir=root_dir, folds=[val_fold], threshold=threshold)
     train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
@@ -259,10 +258,12 @@ if __name__ == "__main__":
 
     threshold = 4.5 # ångström
 
-    training_folds = [1,2,3,4]
+    # dataloarders
+    folds = [1, 2, 3, 4, 5]
     val_fold = 5
-    #training_set = BionoiDatasetCV(op=op, root_dir=root_dir, folds=training_folds)
-    val_set = MolDatasetCV(op=op, root_dir=root_dir, threshold=threshold, folds=[val_fold])
+    folds.remove(val_fold)
+    train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=4.5, shuffle=True, num_workers=4)
 
-    print(val_set[0])
-    
+    for data in val_loader:
+        print(data)
+        print('y:', data['y'])
