@@ -4,6 +4,7 @@ import pandas as pd
 import os
 from biopandas.mol2 import PandasMol2
 #from torch.utils.data import Dataset, DataLoader
+import torch
 from torch_geometric.data import Data, Dataset
 from torch_geometric.data import DataLoader
 from scipy.spatial import distance
@@ -110,7 +111,7 @@ class MolDatasetCV(Dataset):
             for fold in self.folds:
                 self.folder_classes.append(self.class_name_to_int[pocket_class])
                 self.folder_dirs.append(self.root_dir + pocket_class + '/fold_' + str(fold))
-        print('getting training data from following folders: ', self.folder_dirs)
+        print('getting data from following folders: ', self.folder_dirs)
         print('folder classes: ', self.folder_classes)
 
         self.list_of_files_list = [] # directory of files for all folds, [[files for fold 1], [files for fold 2], ...]
@@ -132,21 +133,14 @@ class MolDatasetCV(Dataset):
         Args:
             idx: index of the data
         """
-        # get dataframe directory
-        folder_idx, sub_idx = self.__locate_file(idx)
-        mol_dir = self.list_of_files_list[folder_idx][sub_idx]
-        
+        folder_idx, sub_idx = self.__locate_file(idx) # get dataframe directory
+        mol_dir = self.list_of_files_list[folder_idx][sub_idx] # get dataframe directory
         print('mol file to read: ', mol_dir)
-        # read dataframe
-        mol_df = self.__read_mol(mol_dir)
-
-        # get label 
-        label = self.__get_class_int(folder_idx)
-
+        mol_df = self.__read_mol(mol_dir) # read dataframe as pytorch-geometric graph data
+        label = self.__get_class_int(folder_idx) # get label 
         # apply transform to PIL data if applicable
         #if self.transform:
         #    mol = self.transform(mol)
-
         return mol_df, label
 
     def __locate_file(self, idx):
@@ -186,7 +180,7 @@ class MolDatasetCV(Dataset):
         atoms['binding_probability'] = atoms['residue'].apply(lambda x: self.binding_probability[x])
         atoms = atoms[['atom_type', 'residue', 'x', 'y', 'z', 'charge', 'hydrophobicity', 'binding_probability']]
         atoms_graph = self.__form_graph(atoms, self.threshold)
-        return atoms
+        return atoms_graph
 
     def __form_graph(self, atoms, threshold):
         """
@@ -221,9 +215,14 @@ class MolDatasetCV(Dataset):
         A_dist[threshold_condition] = 0
 
         result = np.where(A_dist > 0)
-        result_oneArray = np.vstack((result[0],result[1]))
-        print(result_oneArray)
-        return None
+        result = np.vstack((result[0],result[1]))
+        #print(result)
+        edge_index = torch.tensor(result, dtype=torch.long)
+        #print(edge_index)
+        node_features = torch.tensor(atoms[['charge', 'hydrophobicity', 'binding_probability']].to_numpy(), dtype=float)
+        #print(node_features)
+        data = Data(x=node_features, edge_index=edge_index)
+        return data
 
 
 
@@ -237,7 +236,6 @@ def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, shuffle=True
         val_fold: integer, which fold is used for validation, the other folds are used for training. e.g: 5
         batch_size: integer, number of data sent to GNN.
     """
-
     training_set = MolDatasetCV(op=op, root_dir=root_dir, folds=training_folds)
     val_set = MolDatasetCV(op=op, root_dir=root_dir, folds=[val_fold])
     train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
@@ -265,5 +263,6 @@ if __name__ == "__main__":
     val_fold = 5
     #training_set = BionoiDatasetCV(op=op, root_dir=root_dir, folds=training_folds)
     val_set = MolDatasetCV(op=op, root_dir=root_dir, threshold=threshold, folds=[val_fold])
+
     print(val_set[0])
     

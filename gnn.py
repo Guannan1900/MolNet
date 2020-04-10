@@ -28,7 +28,7 @@ def get_args():
                         help='suffix to result file')                        
     parser.add_argument('-batch_size',
                         type=int,
-                        default=32,
+                        default=4,
                         required=False,
                         help='the batch size, normally 2^n.')
     parser.add_argument('-num_control',
