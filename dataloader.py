@@ -117,7 +117,6 @@ class MolDatasetCV(Dataset):
         self.list_of_files_list = [] # directory of files for all folds, [[files for fold 1], [files for fold 2], ...]
         for folder_dir in self.folder_dirs:
             self.list_of_files_list.append([os.path.join(folder_dir, name) for name in os.listdir(folder_dir) if os.path.isfile(os.path.join(folder_dir, name))])
-        #print(self.list_of_files_list)
 
         self.folder_dirs_lengths = [] # lengths of the folders
         for files_list in self.list_of_files_list:
@@ -134,15 +133,11 @@ class MolDatasetCV(Dataset):
             idx: index of the data
         """
         folder_idx, sub_idx = self.__locate_file(idx) # get dataframe directory
-        print('folder_idx:', folder_idx)
-        print('sub_idx:', sub_idx)
-
         mol_dir = self.list_of_files_list[folder_idx][sub_idx] # get dataframe directory
-        print('mol file to read: ', mol_dir)
         label = self.__get_class_int(folder_idx) # get label 
-        print('label:', label)
         graph_data = self.__read_mol(mol_dir, label) # read dataframe as pytorch-geometric graph data
-        # apply transform to PIL data if applicable
+
+        ''' apply transform to PIL data if applicable '''
         #if self.transform:
         #    mol = self.transform(mol)
         return graph_data
@@ -206,21 +201,14 @@ class MolDatasetCV(Dataset):
             data = Data(x=x, edge_index=edge_index)
         """
         A = atoms.loc[:,'x':'z'] # sample matrix
-  
         A_dist = distance.cdist(A, A, 'euclidean') # the distance matrix
-
         threshold_condition = A_dist > threshold # set the element whose value is larger than threshold to 0
         A_dist[threshold_condition] = 0 # set the element whose value is larger than threshold to 0
-
         result = np.where(A_dist > 0)
         result = np.vstack((result[0],result[1]))
-        #print(result)
         edge_index = torch.tensor(result, dtype=torch.long)
-        #print(edge_index)
-        node_features = torch.tensor(atoms[['charge', 'hydrophobicity', 'binding_probability']].to_numpy(), dtype=float)
-        #print(node_features)
-        label = torch.tensor([label], dtype=float)
-        print(label)
+        node_features = torch.tensor(atoms[['charge', 'hydrophobicity', 'binding_probability']].to_numpy(), dtype=torch.float32)
+        label = torch.tensor([label], dtype=torch.long)
         data = Data(x=node_features, y=label, edge_index=edge_index)
         return data
 

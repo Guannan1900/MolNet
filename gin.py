@@ -22,15 +22,7 @@ def get_args():
     parser.add_argument('-root_dir',
                         default='../MolNet-data/',
                         required=False,
-                        help='directory to load data for 5-fold cross-validation.')   
-    parser.add_argument('-result_file_suffix',
-                        required=True,
-                        help='suffix to result file')                        
-    parser.add_argument('-batch_size',
-                        type=int,
-                        default=4,
-                        required=False,
-                        help='the batch size, normally 2^n.')
+                        help='directory to load data for 5-fold cross-validation.')                         
     parser.add_argument('-num_control',
                         default=1946,
                         required=False,
@@ -149,17 +141,16 @@ if __name__ == "__main__":
     args = get_args()
     op = args.op    
     root_dir = args.root_dir
-    result_file_suffix = args.result_file_suffix
-    batch_size = args.batch_size
     print('data directory:', root_dir)
-    print('batch size: '+str(batch_size))
     num_control = args.num_control
     num_heme = args.num_heme
     num_nucleotide = args.num_nucleotide
-    num_epoch = 100 # number of epochs to train
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
-    # cpu or gpu
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    threshold = 4.5 # unit:ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
+    num_workers = 4 # number of processes assigned to dataloader.
+    num_epoch = 5 # number of epochs to train
+    batch_size = 4
 
     # 5-fold cross-validation
     for i in range(5):
@@ -170,9 +161,9 @@ if __name__ == "__main__":
         folds = [1, 2, 3, 4, 5]
         val_fold = i+1
         folds.remove(val_fold)
-        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size, threshold=4.5, shuffle=True, num_workers=1)
+        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, shuffle=True, num_workers=num_workers)
 
-        model = Net(num_features=3, dim=16).to(device)
+        model = Net(num_features=3, dim=8).to(device)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
@@ -180,4 +171,9 @@ if __name__ == "__main__":
             train_loss, train_acc = train(epoch)
             val_loss, val_acc = validate()
             print('Epoch: {:03d}, Train Loss: {:.7f}, Train Acc: {:.7f}, Val Loss: {:.7f}, Val Acc: {:.7f}'.format(epoch, train_loss, train_acc, val_loss, val_acc))
-        break
+
+    '''
+    TO DO:
+    1. Save the results of 5 folds when validation loss is at minimum.
+    2. Compute avg accuracy across 5 folds.
+    '''
