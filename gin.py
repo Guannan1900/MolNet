@@ -148,10 +148,25 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
     threshold = 4.5 # unit:ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
-    num_workers = 4 # number of processes assigned to dataloader.
-    num_epoch = 5 # number of epochs to train
-    batch_size = 4
+    num_epoch = 200 # number of epochs to train
+    batch_size = 8
+    num_workers = batch_size # number of processes assigned to dataloader.
+    neural_network_size = 16
 
+    # dataloarders
+    folds = [1, 2, 3, 4, 5]
+    val_fold = 1
+    folds.remove(val_fold)
+    train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, shuffle=True, num_workers=num_workers)
+    model = Net(num_features=3, dim=neural_network_size).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    for epoch in range(1, 1 + num_epoch):
+        train_loss, train_acc = train(epoch)
+        val_loss, val_acc = validate()
+        print('Epoch: {:03d}, Train Loss: {:.7f}, Train Acc: {:.7f}, Val Loss: {:.7f}, Val Acc: {:.7f}'.format(epoch, train_loss, train_acc, val_loss, val_acc))
+    
+
+    '''
     # 5-fold cross-validation
     for i in range(5):
         print('*********************************************************************')
@@ -163,7 +178,7 @@ if __name__ == "__main__":
         folds.remove(val_fold)
         train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, shuffle=True, num_workers=num_workers)
 
-        model = Net(num_features=3, dim=8).to(device)
+        model = Net(num_features=3, dim=neural_network_size).to(device)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
@@ -171,6 +186,7 @@ if __name__ == "__main__":
             train_loss, train_acc = train(epoch)
             val_loss, val_acc = validate()
             print('Epoch: {:03d}, Train Loss: {:.7f}, Train Acc: {:.7f}, Val Loss: {:.7f}, Val Acc: {:.7f}'.format(epoch, train_loss, train_acc, val_loss, val_acc))
+    '''
 
     '''
     TO DO:
