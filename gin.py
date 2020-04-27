@@ -10,6 +10,8 @@ import torch.nn.functional as F
 from torch.nn import Sequential, Linear, ReLU
 from dataloader import gen_loaders
 from torch_geometric.nn import GINConv, global_add_pool
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def get_args():
@@ -136,6 +138,40 @@ def validate():
     return val_loss, acc
 
 
+def plot_loss(train_loss, val_loss, loss_dir, num_epoch):
+    """
+    Plot loss.
+    """
+    epochs = np.array(range(num_epoch)) + 1
+    fig = plt.figure()
+    plt.title('Loss')
+    plt.xlabel('epoch')
+    plt.ylabel('loss')    
+    train_loss = np.array(train_loss)
+    val_loss = np.array(val_loss)
+    plt.plot(epochs, train_loss, color='b', label='training loss')
+    plt.plot(epochs, val_loss, color='r', label='validation loss')
+    plt.legend()
+    plt.savefig(loss_dir)
+
+
+def plot_accuracy(train_acc, val_acc, acc_dir, num_epoch):
+    """
+    Plot accuracy.
+    """
+    epochs = np.array(range(num_epoch)) + 1
+    fig = plt.figure()
+    plt.title('Accuracy')
+    plt.xlabel('epoch')
+    plt.ylabel('accuracy')    
+    train_acc = np.array(train_acc)
+    val_acc = np.array(val_acc)
+    plt.plot(epochs, train_acc, color='b', label='training accuracy')
+    plt.plot(epochs, val_acc, color='r', label='validation accuracy')
+    plt.legend()
+    plt.savefig(acc_dir)
+
+
 if __name__ == "__main__":
     torch.manual_seed(42)
     args = get_args()
@@ -148,10 +184,16 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
     threshold = 4.5 # unit:ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
-    num_epoch = 200 # number of epochs to train
+    num_epoch = 5 # number of epochs to train
     batch_size = 8
     num_workers = batch_size # number of processes assigned to dataloader.
     neural_network_size = 16
+    
+    print('threshold:', threshold)    
+    print('number of epochs:', num_epoch)
+    print('batch_size',batch_size)
+    print('number of data loader workers:', num_workers)
+    print('neural network size:', neural_network_size)
 
     # dataloarders
     folds = [1, 2, 3, 4, 5]
@@ -160,11 +202,20 @@ if __name__ == "__main__":
     train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, shuffle=True, num_workers=num_workers)
     model = Net(num_features=3, dim=neural_network_size).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    train_losses = []
+    val_losses = []
+    train_accs = []
+    val_accs = []
     for epoch in range(1, 1 + num_epoch):
         train_loss, train_acc = train(epoch)
         val_loss, val_acc = validate()
         print('Epoch: {:03d}, Train Loss: {:.7f}, Train Acc: {:.7f}, Val Loss: {:.7f}, Val Acc: {:.7f}'.format(epoch, train_loss, train_acc, val_loss, val_acc))
-    
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        train_accs.append(train_acc)
+        val_accs.append(val_acc)
+    plot_loss(train_losses, val_losses, './figure/gin_loss.png', num_epoch)  
+    plot_accuracy(train_accs, val_accs, './figure/gin_acc.png', num_epoch)  
 
     '''
     # 5-fold cross-validation
