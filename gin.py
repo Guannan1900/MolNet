@@ -95,11 +95,9 @@ def train(epoch):
     Global vars: train_loader, train_size, device, optimizer, model
     """
     model.train()
-    '''
-    if epoch == 51:
+    if epoch == 300:
         for param_group in optimizer.param_groups:
             param_group['lr'] = 0.5 * param_group['lr']
-    '''
     loss_total = 0
     correct = 0
     for data in train_loader:
@@ -142,7 +140,7 @@ def plot_loss(train_loss, val_loss, loss_dir, num_epoch):
     """
     Plot loss.
     """
-    epochs = np.array(range(num_epoch)) + 1
+    epochs = np.array(range(num_epoch), dtype=int) + 1
     fig = plt.figure()
     plt.title('Loss')
     plt.xlabel('epoch')
@@ -159,7 +157,7 @@ def plot_accuracy(train_acc, val_acc, acc_dir, num_epoch):
     """
     Plot accuracy.
     """
-    epochs = np.array(range(num_epoch)) + 1
+    epochs = np.array(range(num_epoch), dtype=int) + 1
     fig = plt.figure()
     plt.title('Accuracy')
     plt.xlabel('epoch')
@@ -184,9 +182,9 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
     threshold = 4.5 # unit:ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
-    num_epoch = 5 # number of epochs to train
-    batch_size = 8
-    num_workers = batch_size # number of processes assigned to dataloader.
+    num_epoch = 4 # number of epochs to train
+    batch_size = 4
+    num_workers = 8 # number of processes assigned to dataloader.
     neural_network_size = 16
     
     print('threshold:', threshold)    
@@ -201,11 +199,14 @@ if __name__ == "__main__":
     folds.remove(val_fold)
     train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, shuffle=True, num_workers=num_workers)
     model = Net(num_features=3, dim=neural_network_size).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    print('model architecture:')
+    print(model)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.002)
     train_losses = []
     val_losses = []
     train_accs = []
     val_accs = []
+    print('begin training...')
     for epoch in range(1, 1 + num_epoch):
         train_loss, train_acc = train(epoch)
         val_loss, val_acc = validate()
