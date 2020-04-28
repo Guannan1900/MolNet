@@ -101,7 +101,7 @@ def train(epoch):
     Global vars: train_loader, train_size, device, optimizer, model
     """
     model.train()
-    if epoch == 400:
+    if epoch == 700:
         for param_group in optimizer.param_groups:
             param_group['lr'] = 0.5 * param_group['lr']
     loss_total = 0
@@ -188,7 +188,7 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
     threshold = 4.5 # unit:ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
-    num_epoch = 600 # number of epochs to train
+    num_epoch = 1000 # number of epochs to train
     batch_size = 4
     num_workers = 4 # number of processes assigned to dataloader.
     neural_network_size = 16
@@ -229,8 +229,8 @@ if __name__ == "__main__":
             best_val_loss_dict = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss':val_loss, 'val_acc':val_acc}
     print('results at minimum val loss:')
     print(best_val_loss_dict)
-    plot_loss(train_losses, val_losses, './figure/gin_loss_5.png', num_epoch)  
-    plot_accuracy(train_accs, val_accs, './figure/gin_acc_5.png', num_epoch)  
+    plot_loss(train_losses, val_losses, './figure/gin_loss_6.png', num_epoch)  
+    plot_accuracy(train_accs, val_accs, './figure/gin_acc_6.png', num_epoch)  
 
     '''
     # 5-fold cross-validation
