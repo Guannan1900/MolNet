@@ -63,9 +63,13 @@ class Net(torch.nn.Module):
         self.conv4 = GINConv(nn4)
         self.bn4 = torch.nn.BatchNorm1d(dim)
 
-        nn5 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
-        self.conv5 = GINConv(nn5)
-        self.bn5 = torch.nn.BatchNorm1d(dim)
+        #nn5 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
+        #self.conv5 = GINConv(nn5)
+        #self.bn5 = torch.nn.BatchNorm1d(dim)
+
+        #nn6 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
+        #self.conv6 = GINConv(nn6)
+        #self.bn6 = torch.nn.BatchNorm1d(dim)
 
         self.fc1 = Linear(dim, dim)
         self.fc2 = Linear(dim, 2) # binary classification, softmax is used instead of sigmoid here.
@@ -79,8 +83,10 @@ class Net(torch.nn.Module):
         x = self.bn3(x)
         x = F.relu(self.conv4(x, edge_index))
         x = self.bn4(x)
-        x = F.relu(self.conv5(x, edge_index))
-        x = self.bn5(x)
+        #x = F.relu(self.conv5(x, edge_index))
+        #x = self.bn5(x)
+        #x = F.relu(self.conv6(x, edge_index))
+        #x = self.bn6(x)
         x = global_add_pool(x, batch)
         x = F.relu(self.fc1(x))
         x = F.dropout(x, p=0.5, training=self.training)
@@ -95,7 +101,7 @@ def train(epoch):
     Global vars: train_loader, train_size, device, optimizer, model
     """
     model.train()
-    if epoch == 300:
+    if epoch == 400:
         for param_group in optimizer.param_groups:
             param_group['lr'] = 0.5 * param_group['lr']
     loss_total = 0
@@ -182,9 +188,9 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
     threshold = 4.5 # unit:ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
-    num_epoch = 4 # number of epochs to train
+    num_epoch = 600 # number of epochs to train
     batch_size = 4
-    num_workers = 8 # number of processes assigned to dataloader.
+    num_workers = 4 # number of processes assigned to dataloader.
     neural_network_size = 16
     
     print('threshold:', threshold)    
@@ -201,11 +207,14 @@ if __name__ == "__main__":
     model = Net(num_features=3, dim=neural_network_size).to(device)
     print('model architecture:')
     print(model)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.002)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001, amsgrad=False)
+    print('optimizer:')
+    print(optimizer)
     train_losses = []
     val_losses = []
     train_accs = []
     val_accs = []
+    best_val_loss = 9999999
     print('begin training...')
     for epoch in range(1, 1 + num_epoch):
         train_loss, train_acc = train(epoch)
@@ -215,8 +224,12 @@ if __name__ == "__main__":
         val_losses.append(val_loss)
         train_accs.append(train_acc)
         val_accs.append(val_acc)
-    plot_loss(train_losses, val_losses, './figure/gin_loss.png', num_epoch)  
-    plot_accuracy(train_accs, val_accs, './figure/gin_acc.png', num_epoch)  
+        if val_loss < best_val_loss:
+            best_val_loss_dict = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss':val_loss, 'val_acc':val_acc}
+    print('results at minimum val loss:')
+    print(best_val_loss_dict)
+    plot_loss(train_losses, val_losses, './figure/gin_loss_5.png', num_epoch)  
+    plot_accuracy(train_accs, val_accs, './figure/gin_acc_5.png', num_epoch)  
 
     '''
     # 5-fold cross-validation
