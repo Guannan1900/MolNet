@@ -225,6 +225,7 @@ if __name__ == "__main__":
         train_accs.append(train_acc)
         val_accs.append(val_acc)
         if val_loss < best_val_loss:
+            best_val_loss = val_loss
             best_val_loss_dict = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss':val_loss, 'val_acc':val_acc}
     print('results at minimum val loss:')
     print(best_val_loss_dict)
