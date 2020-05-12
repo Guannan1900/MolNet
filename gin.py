@@ -198,39 +198,62 @@ if __name__ == "__main__":
     print('batch_size',batch_size)
     print('number of data loader workers:', num_workers)
     print('neural network size:', neural_network_size)
+    
+    results = []
+    for val_fold in [1,2,3,4,5]:
+        folds = [1, 2, 3, 4, 5]
+        val_fold = 1
+        folds.remove(val_fold)
+        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, shuffle=True, num_workers=num_workers)
+        model = Net(num_features=3, dim=neural_network_size).to(device)
+        print('model architecture:')
+        print(model)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001, amsgrad=False)
+        print('optimizer:')
+        print(optimizer)
+        train_losses = []
+        val_losses = []
+        train_accs = []
+        val_accs = []
+        best_val_loss = 9999999
+        print('begin training...')
+        for epoch in range(1, 1 + num_epoch):
+            train_loss, train_acc = train(epoch)
+            val_loss, val_acc = validate()
+            print('Epoch: {:03d}, Train Loss: {:.7f}, Train Acc: {:.7f}, Val Loss: {:.7f}, Val Acc: {:.7f}'.format(epoch, train_loss, train_acc, val_loss, val_acc))
+            train_losses.append(train_loss)
+            val_losses.append(val_loss)
+            train_accs.append(train_acc)
+            val_accs.append(val_acc)
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_val_loss_dict = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss':val_loss, 'val_acc':val_acc}
+        print('results at minimum val loss:')
+        print(best_val_loss_dict)
+        results.append(best_val_loss_dict)
+        #plot_loss(train_losses, val_losses, './figure/gin_loss_6.png', num_epoch)  
+        #plot_accuracy(train_accs, val_accs, './figure/gin_acc_6.png', num_epoch)  
+    
+    # averaged results over folds
+    print('*****************************************************************')
+    train_loss = 0
+    train_acc = 0
+    val_loss = 0
+    val_acc = 0
+    for best_val_loss_dict in results:
+        train_loss += best_val_loss_dict['train_loss']
+        train_acc += best_val_loss_dict['train_acc']
+        val_loss += best_val_loss_dict['val_loss']
+        val_acc += best_val_loss_dict['val_acc']
+    train_loss = train_loss/5
+    train_acc = train_acc/5
+    val_loss = val_loss/5
+    val_acc = val_acc/5
+    print('averaged train loss:', train_loss)
+    print('averaged train accuracy:', train_acc)
+    print('averaged validation loss:', val_loss)
+    print('averaged validation accuracy:', val_acc)
 
-    # dataloarders
-    folds = [1, 2, 3, 4, 5]
-    val_fold = 1
-    folds.remove(val_fold)
-    train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, shuffle=True, num_workers=num_workers)
-    model = Net(num_features=3, dim=neural_network_size).to(device)
-    print('model architecture:')
-    print(model)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001, amsgrad=False)
-    print('optimizer:')
-    print(optimizer)
-    train_losses = []
-    val_losses = []
-    train_accs = []
-    val_accs = []
-    best_val_loss = 9999999
-    print('begin training...')
-    for epoch in range(1, 1 + num_epoch):
-        train_loss, train_acc = train(epoch)
-        val_loss, val_acc = validate()
-        print('Epoch: {:03d}, Train Loss: {:.7f}, Train Acc: {:.7f}, Val Loss: {:.7f}, Val Acc: {:.7f}'.format(epoch, train_loss, train_acc, val_loss, val_acc))
-        train_losses.append(train_loss)
-        val_losses.append(val_loss)
-        train_accs.append(train_acc)
-        val_accs.append(val_acc)
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            best_val_loss_dict = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss':val_loss, 'val_acc':val_acc}
-    print('results at minimum val loss:')
-    print(best_val_loss_dict)
-    plot_loss(train_losses, val_losses, './figure/gin_loss_6.png', num_epoch)  
-    plot_accuracy(train_accs, val_accs, './figure/gin_acc_6.png', num_epoch)  
 
     '''
     # 5-fold cross-validation
