@@ -59,9 +59,9 @@ class Net(torch.nn.Module):
         self.conv3 = GINConv(nn3)
         self.bn3 = torch.nn.BatchNorm1d(dim)
 
-        nn4 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
-        self.conv4 = GINConv(nn4)
-        self.bn4 = torch.nn.BatchNorm1d(dim)
+        #nn4 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
+        #self.conv4 = GINConv(nn4)
+        #self.bn4 = torch.nn.BatchNorm1d(dim)
 
         #nn5 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
         #self.conv5 = GINConv(nn5)
@@ -81,8 +81,8 @@ class Net(torch.nn.Module):
         x = self.bn2(x)
         x = F.relu(self.conv3(x, edge_index))
         x = self.bn3(x)
-        x = F.relu(self.conv4(x, edge_index))
-        x = self.bn4(x)
+        #x = F.relu(self.conv4(x, edge_index))
+        #x = self.bn4(x)
         #x = F.relu(self.conv5(x, edge_index))
         #x = self.bn5(x)
         #x = F.relu(self.conv6(x, edge_index))
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     num_epoch = 1000 # number of epochs to train
     batch_size = 4
     num_workers = 4 # number of processes assigned to dataloader.
-    neural_network_size = 16
+    neural_network_size = 32
     
     print('threshold:', threshold)    
     print('number of epochs:', num_epoch)
@@ -202,7 +202,6 @@ if __name__ == "__main__":
     results = []
     for val_fold in [1,2,3,4,5]:
         folds = [1, 2, 3, 4, 5]
-        val_fold = 1
         folds.remove(val_fold)
         train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, shuffle=True, num_workers=num_workers)
         model = Net(num_features=3, dim=neural_network_size).to(device)
@@ -227,7 +226,7 @@ if __name__ == "__main__":
             val_accs.append(val_acc)
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-                best_val_loss_dict = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss':val_loss, 'val_acc':val_acc}
+                best_val_loss_dict = {'epoch': epoch, 'train_loss': train_loss, 'train_acc': train_acc, 'val_loss':val_loss, 'val_acc':val_acc}
         print('results at minimum val loss:')
         print(best_val_loss_dict)
         results.append(best_val_loss_dict)
@@ -240,11 +239,13 @@ if __name__ == "__main__":
     train_acc = 0
     val_loss = 0
     val_acc = 0
+    best_val_loss_epochs = []
     for best_val_loss_dict in results:
         train_loss += best_val_loss_dict['train_loss']
         train_acc += best_val_loss_dict['train_acc']
         val_loss += best_val_loss_dict['val_loss']
         val_acc += best_val_loss_dict['val_acc']
+        best_val_loss_epochs.append(best_val_loss_dict['epoch'])
     train_loss = train_loss/5
     train_acc = train_acc/5
     val_loss = val_loss/5
@@ -253,32 +254,10 @@ if __name__ == "__main__":
     print('averaged train accuracy:', train_acc)
     print('averaged validation loss:', val_loss)
     print('averaged validation accuracy:', val_acc)
-
-
-    '''
-    # 5-fold cross-validation
-    for i in range(5):
-        print('*********************************************************************')
-        print('starting {}th fold cross-validation'.format(i+1))
-        
-        # dataloarders
-        folds = [1, 2, 3, 4, 5]
-        val_fold = i+1
-        folds.remove(val_fold)
-        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, shuffle=True, num_workers=num_workers)
-
-        model = Net(num_features=3, dim=neural_network_size).to(device)
-
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-        for epoch in range(1, 1 + num_epoch):
-            train_loss, train_acc = train(epoch)
-            val_loss, val_acc = validate()
-            print('Epoch: {:03d}, Train Loss: {:.7f}, Train Acc: {:.7f}, Val Loss: {:.7f}, Val Acc: {:.7f}'.format(epoch, train_loss, train_acc, val_loss, val_acc))
-    '''
+    print('epochs that have best validation loss:', best_val_loss_epochs)
 
     '''
     TO DO:
-    1. Save the results of 5 folds when validation loss is at minimum.
-    2. Compute avg accuracy across 5 folds.
+    1. Save the model of 5 folds when validation loss is at minimum.
+    2. compute precision, recall, f1, MCC
     '''
