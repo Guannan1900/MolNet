@@ -1,13 +1,13 @@
 """
 Graph classification with Graph Neural Networks (GNNs). 
-Part of the code is adapted from this example:
+Part of the code is adopted from this example:
 https://github.com/rusty1s/pytorch_geometric/blob/master/examples/mutag_gin.py
 
 """
 import argparse
 import torch
 import torch.nn.functional as F
-from torch.nn import Sequential, Linear, ReLU
+from torch.nn import Sequential, Linear, ReLU, LeakyReLU
 from dataloader import gen_loaders
 from torch_geometric.nn import GINConv, global_add_pool
 import matplotlib.pyplot as plt
@@ -47,15 +47,15 @@ class Net(torch.nn.Module):
         num_features = dataset.num_features
         dim = 32
         '''
-        nn1 = Sequential(Linear(num_features, dim), ReLU(), Linear(dim, dim))
+        nn1 = Sequential(Linear(num_features, dim), LeakyReLU(), Linear(dim, dim))
         self.conv1 = GINConv(nn1)
         self.bn1 = torch.nn.BatchNorm1d(dim)
 
-        nn2 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
+        nn2 = Sequential(Linear(dim, dim), LeakyReLU(), Linear(dim, dim))
         self.conv2 = GINConv(nn2)
         self.bn2 = torch.nn.BatchNorm1d(dim)
 
-        nn3 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
+        nn3 = Sequential(Linear(dim, dim), LeakyReLU(), Linear(dim, dim))
         self.conv3 = GINConv(nn3)
         self.bn3 = torch.nn.BatchNorm1d(dim)
 
@@ -101,7 +101,7 @@ def train(epoch):
     Global vars: train_loader, train_size, device, optimizer, model
     """
     model.train()
-    if epoch == 700:
+    if epoch == 1200:
         for param_group in optimizer.param_groups:
             param_group['lr'] = 0.5 * param_group['lr']
     loss_total = 0
@@ -187,10 +187,10 @@ if __name__ == "__main__":
     num_nucleotide = args.num_nucleotide
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
-    threshold = 4.5 # unit:ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
-    num_epoch = 1000 # number of epochs to train
+    threshold = 4.5 # unit: ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
+    num_epoch = 1500 # number of epochs to train
     batch_size = 4
-    num_workers = 4 # number of processes assigned to dataloader.
+    num_workers = batch_size # number of processes assigned to dataloader.
     neural_network_size = 32
     
     print('threshold:', threshold)    
@@ -207,7 +207,7 @@ if __name__ == "__main__":
         model = Net(num_features=3, dim=neural_network_size).to(device)
         print('model architecture:')
         print(model)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001, amsgrad=False)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0003, amsgrad=False)
         print('optimizer:')
         print(optimizer)
         train_losses = []
