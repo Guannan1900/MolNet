@@ -94,14 +94,14 @@ class Net(torch.nn.Module):
         return F.log_softmax(x, dim=-1)
 
 
-def train(epoch):
+def train(epoch, lr_decay_epoch):
     """
     Train the model for 1 epoch, then return the averaged loss of the data 
     in this epoch.
     Global vars: train_loader, train_size, device, optimizer, model
     """
     model.train()
-    if epoch == 1200:
+    if epoch == lr_decay_epoch:
         for param_group in optimizer.param_groups:
             param_group['lr'] = 0.5 * param_group['lr']
     loss_total = 0
@@ -189,12 +189,14 @@ if __name__ == "__main__":
 
     threshold = 4.5 # unit: ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
     num_epoch = 1500 # number of epochs to train
+    lr_decay_epoch = 1200
     batch_size = 4
     num_workers = batch_size # number of processes assigned to dataloader.
     neural_network_size = 32
     
     print('threshold:', threshold)    
     print('number of epochs:', num_epoch)
+    print('learning rate decay at epoch:', lr_decay_epoch)
     print('batch_size',batch_size)
     print('number of data loader workers:', num_workers)
     print('neural network size:', neural_network_size)
@@ -217,7 +219,7 @@ if __name__ == "__main__":
         best_val_loss = 9999999
         print('begin training...')
         for epoch in range(1, 1 + num_epoch):
-            train_loss, train_acc = train(epoch)
+            train_loss, train_acc = train(epoch, lr_decay_epoch)
             val_loss, val_acc = validate()
             print('Epoch: {:03d}, Train Loss: {:.7f}, Train Acc: {:.7f}, Val Loss: {:.7f}, Val Acc: {:.7f}'.format(epoch, train_loss, train_acc, val_loss, val_acc))
             train_losses.append(train_loss)
