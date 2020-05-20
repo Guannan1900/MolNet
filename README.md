@@ -11,7 +11,7 @@ Mo-Net is short for Molecular-Network. It is a deep learning based-frame work to
 The following two tables list the statistics of the graph data.
 1. Control against nucleotide:   
 | sss | number of nodes | number of edges | density | diameter | average degree |   
-| --- | --- | --- | --- | --- | --- |   
+| --- | ---             | ---             | ---     | ---      | ---            |   
 | mean | 176.31 | 971.03 | 0.071 | inf | 10.89 |   
 | median | 168.0 | 922.0 | 0.066 | 10 | 10.93 |   
 
