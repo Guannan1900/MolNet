@@ -202,7 +202,7 @@ if __name__ == "__main__":
     print('batch_size:',batch_size)
     print('number of data loader workers:', num_workers)
     print('neural network size:', neural_network_size)
-    print('features to use:' features_to_use)
+    print('features to use:', features_to_use)
     
     results = []
     for val_fold in [1,2,3,4,5]:
