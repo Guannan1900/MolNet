@@ -59,9 +59,9 @@ class Net(torch.nn.Module):
         self.conv3 = GINConv(nn3)
         self.bn3 = torch.nn.BatchNorm1d(dim)
 
-        #nn4 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
-        #self.conv4 = GINConv(nn4)
-        #self.bn4 = torch.nn.BatchNorm1d(dim)
+        nn4 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
+        self.conv4 = GINConv(nn4)
+        self.bn4 = torch.nn.BatchNorm1d(dim)
 
         #nn5 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
         #self.conv5 = GINConv(nn5)
@@ -81,8 +81,8 @@ class Net(torch.nn.Module):
         x = self.bn2(x)
         x = F.relu(self.conv3(x, edge_index))
         x = self.bn3(x)
-        #x = F.relu(self.conv4(x, edge_index))
-        #x = self.bn4(x)
+        x = F.relu(self.conv4(x, edge_index))
+        x = self.bn4(x)
         #x = F.relu(self.conv5(x, edge_index))
         #x = self.bn5(x)
         #x = F.relu(self.conv6(x, edge_index))
@@ -188,28 +188,31 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
     threshold = 4.5 # unit: ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
-    num_epoch = 1500 # number of epochs to train
-    lr_decay_epoch = 1200
+    num_epoch = 1000 # number of epochs to train
+    lr_decay_epoch = 800
     batch_size = 4
     num_workers = batch_size # number of processes assigned to dataloader.
-    neural_network_size = 32
-    
+    neural_network_size = 16
+    features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center']
+    num_features = len(features_to_use)
+
     print('threshold:', threshold)    
     print('number of epochs:', num_epoch)
     print('learning rate decay at epoch:', lr_decay_epoch)
-    print('batch_size',batch_size)
+    print('batch_size:',batch_size)
     print('number of data loader workers:', num_workers)
     print('neural network size:', neural_network_size)
+    print('features to use:' features_to_use)
     
     results = []
     for val_fold in [1,2,3,4,5]:
         folds = [1, 2, 3, 4, 5]
         folds.remove(val_fold)
-        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, shuffle=True, num_workers=num_workers)
-        model = Net(num_features=3, dim=neural_network_size).to(device)
+        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, features_to_use=features_to_use, shuffle=True, num_workers=num_workers)
+        model = Net(num_features=num_features, dim=neural_network_size).to(device)
         print('model architecture:')
         print(model)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0003, amsgrad=False)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001, amsgrad=False)
         print('optimizer:')
         print(optimizer)
         train_losses = []
