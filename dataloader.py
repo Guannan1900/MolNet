@@ -43,7 +43,7 @@ def get_args():
     
     parser.add_argument('-batch_size',
                         type=int,
-                        default=2,
+                        default=1,
                         required=False,
                         help='the batch size, normally 2^n.')
     
@@ -68,12 +68,14 @@ class MolDatasetCV(Dataset):
     """
     Dataset for MolNet, can be used to load multiple folds for training or single fold for validation and testing
     """
-    def __init__(self, op, root_dir, folds, threshold, transform=None):
+    def __init__(self, op, root_dir, folds, threshold, features_to_use, transform=None):
         """
         Args:
             op: operation mode, heme_vs_nucleotide, control_vs_heme or control_vs_nucleotide. 
             root_dir: folder containing all mol files.
             folds: a list containing folds to generate training data, for example [1,2,3,4], [5].
+            threshold: thresh hold of the distance between atoms to form an edge.
+            features_to_use: list of features to use for deep learning. Should be subset of ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
             transform: transform to be applied to graphs.
         """
         self.op = op
@@ -91,6 +93,9 @@ class MolDatasetCV(Dataset):
                                     'HIS':2.286,'ILE':1.006,'LEU':1.045,'LYS':0.468,
                                     'MET':1.894,'PHE':1.952,'PRO':0.212,'SER':0.883,
                                     'THR':0.730,'TRP':3.084,'TYR':1.672,'VAL':0.884}
+        total_features = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
+        assert(set(features_to_use).issubset(set(total_features))) # features to use should be subset of ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
+        self.features_to_use = features_to_use
         print('--------------------------------------------------------')
         if len(folds) == 1:
             print('generating validation dataset...')
@@ -172,7 +177,8 @@ class MolDatasetCV(Dataset):
         atoms['residue'] = atoms['subst_name'].apply(lambda x: x[0:3])
         atoms['hydrophobicity'] = atoms['residue'].apply(lambda x: self.hydrophobicity[x])
         atoms['binding_probability'] = atoms['residue'].apply(lambda x: self.binding_probability[x])
-        atoms = atoms[['atom_type', 'residue', 'x', 'y', 'z', 'charge', 'hydrophobicity', 'binding_probability']]
+        center_distances = self.__compute_dist_to_center(atoms[['x','y','z']].to_numpy())
+        atoms['distance_to_center'] = center_distances
         atoms_graph = self.__form_graph(atoms, self.threshold, label)
         return atoms_graph
 
@@ -207,13 +213,23 @@ class MolDatasetCV(Dataset):
         result = np.where(A_dist > 0)
         result = np.vstack((result[0],result[1]))
         edge_index = torch.tensor(result, dtype=torch.long)
-        node_features = torch.tensor(atoms[['charge', 'hydrophobicity', 'binding_probability']].to_numpy(), dtype=torch.float32)
+        node_features = torch.tensor(atoms[self.features_to_use].to_numpy(), dtype=torch.float32)
         label = torch.tensor([label], dtype=torch.long)
         data = Data(x=node_features, y=label, edge_index=edge_index)
         return data
 
+    def __compute_dist_to_center(self, data):
+        """
+        Given the input data matrix (n by d), return the distances of each points to the
+        geometric center.
+        """
+        center = np.mean(data, axis=0)
+        shifted_data = data - center # center the data around origin
+        distances = np.sqrt(shifted_data[:,0]**2 + shifted_data[:,1]**2 + shifted_data[:,2]**2) # distances to origin
+        return distances
 
-def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, threshold, shuffle=True, num_workers=1):
+
+def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, threshold, features_to_use, shuffle=True, num_workers=1):
     """
     Function to generate dataloaders for cross validation
     Args:
@@ -223,8 +239,8 @@ def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, threshold, s
         val_fold: integer, which fold is used for validation, the other folds are used for training. e.g: 5
         batch_size: integer, number of data sent to GNN.
     """
-    training_set = MolDatasetCV(op=op, root_dir=root_dir, folds=training_folds, threshold=threshold)
-    val_set = MolDatasetCV(op=op, root_dir=root_dir, folds=[val_fold], threshold=threshold)
+    training_set = MolDatasetCV(op=op, root_dir=root_dir, folds=training_folds, threshold=threshold, features_to_use=features_to_use)
+    val_set = MolDatasetCV(op=op, root_dir=root_dir, folds=[val_fold], threshold=threshold, features_to_use=features_to_use)
     train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
@@ -243,15 +259,16 @@ if __name__ == "__main__":
     num_control = args.num_control
     num_heme = args.num_heme
     num_nucleotide = args.num_nucleotide
-
+    features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center']
     threshold = 4.5 # ångström
 
     # dataloarders
     folds = [1, 2, 3, 4, 5]
     val_fold = 5
     folds.remove(val_fold)
-    train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=4.5, shuffle=True, num_workers=4)
+    train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=4.5, features_to_use=features_to_use, shuffle=False, num_workers=1)
 
     for data in val_loader:
         print(data)
-        print('y:', data['y'])
+        #print('y:', data['y'])
+        break
