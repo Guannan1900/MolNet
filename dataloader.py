@@ -32,19 +32,19 @@ def get_args():
                         help="'control_vs_heme', 'control_vs_nucleotide', 'heme_vs_nucleotide'")
 
     parser.add_argument('-root_dir',
-                        default='../MolNet-data/',
+                        default='../MolNet-data/pockets/',
                         required=False,
                         help='directory to load mol2 data for 5-fold cross-validation.')
 
     parser.add_argument('-pop_dir',
-                        default='../MolNet-data/pop_folder',
+                        default='../MolNet-data/pops/',
                         required=False,
                         help='directory to load sasa data.')
 
     parser.add_argument('-profile_dir',
-                        default='../MolNet-data/profile_folder',
+                        default='../MolNet-data/profiles/',
                         required=False,
-                        help='directory to load sasa data.')                                                
+                        help='directory to load sasa data.')                                               
     
     parser.add_argument('-result_file_suffix',
                         default='default_run',
@@ -122,23 +122,43 @@ class MolDatasetCV(Dataset):
             self.class_name_to_int[self.pocket_classes[i]] = i
         print('class name to integer map: ', self.class_name_to_int)
 
-        self.folder_dirs = [] # directory of folders containing training data                                 
-        self.folder_classes = [] # list of classes of each folder, integer        
+        self.folder_dirs = [] # directories of folders containing training data                                 
+        self.pop_sub_dirs = [] # directories of folders containing pop data
+        self.profile_sub_dirs = [] # directories of folders containing profile data
+        self.folder_classes = [] # list of classes of each folder, integer    
         for pocket_class in self.pocket_classes:
             for fold in self.folds:
                 self.folder_classes.append(self.class_name_to_int[pocket_class])
                 self.folder_dirs.append(self.root_dir + pocket_class + '/fold_' + str(fold))
+                self.pop_sub_dirs.append(self.pop_dir + pocket_class + '/fold_' + str(fold))
+                self.profile_sub_dirs.append(self.profile_dir + pocket_class + '/fold_' + str(fold))
         print('getting data from following folders: ', self.folder_dirs)
+        print('getting pops from following folders: ', self.pop_sub_dirs)
+        print('getting profiles from following folders: ', self.profile_sub_dirs)
         print('folder classes: ', self.folder_classes)
 
         self.list_of_files_list = [] # directory of files for all folds, [[files for fold 1], [files for fold 2], ...]
         for folder_dir in self.folder_dirs:
             self.list_of_files_list.append([os.path.join(folder_dir, name) for name in os.listdir(folder_dir) if os.path.isfile(os.path.join(folder_dir, name))])
+        #print(self.list_of_files_list)
+
+        self.list_of_pop_files_list = [] # directory of pop files for all folds, [[files for fold 1], [files for fold 2], ...]
+        for file_list in self.list_of_files_list:
+            pop_files = [(lambda x: self.pop_dir + x.split('pockets/')[-1][:-9] + '.out')(name) for name in file_list]
+            self.list_of_pop_files_list.append(pop_files)
+        #print(self.list_of_pop_files_list)
+
+        self.list_of_profile_files_list = [] # directory of profile files for all folds, [[files for fold 1], [files for fold 2], ...]
+        for file_list in self.list_of_files_list:
+            profile_files = [(lambda x: self.profile_dir + x.split('pockets/')[-1][:-9] + '.profile')(name) for name in file_list]
+            self.list_of_profile_files_list.append(profile_files)
+        #print(self.list_of_profile_files_list)
 
         self.folder_dirs_lengths = [] # lengths of the folders
         for files_list in self.list_of_files_list:
             self.folder_dirs_lengths.append(len(files_list))
         print('lengths of the folders: ', self.folder_dirs_lengths)
+        print('--------------------------------------------------------')
 
     def __len__(self):
         return sum(self.folder_dirs_lengths)
@@ -151,7 +171,12 @@ class MolDatasetCV(Dataset):
         """
         folder_idx, sub_idx = self.__locate_file(idx) # get dataframe directory
         mol_dir = self.list_of_files_list[folder_idx][sub_idx] # get dataframe directory
+        pop_dir = self.list_of_pop_files_list[folder_idx][sub_idx]
+        profile_dir = self.list_of_profile_files_list[folder_idx][sub_idx]
         label = self.__get_class_int(folder_idx) # get label 
+        print('pocket dir:', mol_dir)
+        print('pop dir:', pop_dir)
+        print('profile dir', profile_dir)
         graph_data = self.__read_mol(mol_dir, label) # read dataframe as pytorch-geometric graph data
 
         ''' apply transform to PIL data if applicable '''
@@ -279,7 +304,7 @@ class MolDatasetCV(Dataset):
         return qsasa_data
 
 
-def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, threshold, features_to_use, shuffle=True, num_workers=1):
+def gen_loaders(op, root_dir, pop_dir, profile_dir, training_folds, val_fold, batch_size, threshold, features_to_use, shuffle=True, num_workers=1):
     """
     Function to generate dataloaders for cross validation
     Args:
@@ -289,8 +314,8 @@ def gen_loaders(op, root_dir, training_folds, val_fold, batch_size, threshold, f
         val_fold: integer, which fold is used for validation, the other folds are used for training. e.g: 5
         batch_size: integer, number of data sent to GNN.
     """
-    training_set = MolDatasetCV(op=op, root_dir=root_dir, folds=training_folds, threshold=threshold, features_to_use=features_to_use)
-    val_set = MolDatasetCV(op=op, root_dir=root_dir, folds=[val_fold], threshold=threshold, features_to_use=features_to_use)
+    training_set = MolDatasetCV(op=op, root_dir=root_dir, pop_dir=pop_dir, profile_dir=profile_dir, folds=training_folds, threshold=threshold, features_to_use=features_to_use)
+    val_set = MolDatasetCV(op=op, root_dir=root_dir, pop_dir=pop_dir, profile_dir=profile_dir, folds=[val_fold], threshold=threshold, features_to_use=features_to_use)
     train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
