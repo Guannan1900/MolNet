@@ -22,9 +22,17 @@ def get_args():
                         choices = ['control_vs_heme', 'control_vs_nucleotide', 'heme_vs_nucleotide'],
                         help="'control_vs_heme', 'control_vs_nucleotide', 'heme_vs_nucleotide'")
     parser.add_argument('-root_dir',
-                        default='../MolNet-data/',
+                        default='../MolNet-data/pockets/',
                         required=False,
-                        help='directory to load data for 5-fold cross-validation.')                         
+                        help='directory to load mol2 data for 5-fold cross-validation.')
+    parser.add_argument('-pop_dir',
+                        default='../MolNet-data/pops/',
+                        required=False,
+                        help='directory to load sasa data.')
+    parser.add_argument('-profile_dir',
+                        default='../MolNet-data/profiles/',
+                        required=False,
+                        help='directory to load sasa data.')                         
     parser.add_argument('-num_control',
                         default=1946,
                         required=False,
@@ -181,7 +189,11 @@ if __name__ == "__main__":
     args = get_args()
     op = args.op    
     root_dir = args.root_dir
+    pop_dir = args.pop_dir
+    profile_dir = args.profile_dir
     print('data directory:', root_dir)
+    print('pop directory (for sasa feature):', pop_dir)
+    print('profile directory (for sequence_entropy feature):', profile_dir)
     num_control = args.num_control
     num_heme = args.num_heme
     num_nucleotide = args.num_nucleotide
@@ -193,7 +205,7 @@ if __name__ == "__main__":
     batch_size = 4
     num_workers = batch_size # number of processes assigned to dataloader.
     neural_network_size = 16
-    features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center']
+    features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa']
     num_features = len(features_to_use)
 
     print('threshold:', threshold)    
@@ -208,7 +220,7 @@ if __name__ == "__main__":
     for val_fold in [1,2,3,4,5]:
         folds = [1, 2, 3, 4, 5]
         folds.remove(val_fold)
-        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, features_to_use=features_to_use, shuffle=True, num_workers=num_workers)
+        train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, pop_dir, profile_dir, folds, val_fold, batch_size=batch_size, threshold=threshold, features_to_use=features_to_use, shuffle=True, num_workers=num_workers)
         model = Net(num_features=num_features, dim=neural_network_size).to(device)
         print('model architecture:')
         print(model)
