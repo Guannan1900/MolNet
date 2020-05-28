@@ -220,6 +220,8 @@ class MolDatasetCV(Dataset):
         siteresidue_list = atoms['subst_name'].tolist()
         qsasa_data = self.__extract_sasa_data(siteresidue_list, pop_path)
         atoms['sasa'] = qsasa_data
+        seq_entropy_data = self.__extract_seq_entropy_data(siteresidue_list, profile_path) # sequence entropy data with subst_name as keys
+        atoms['sequence_entropy'] = atoms['subst_name'].apply(lambda x: seq_entropy_data[x])
         atoms_graph = self.__form_graph(atoms, self.threshold, label)
         return atoms_graph
 
@@ -298,6 +300,60 @@ class MolDatasetCV(Dataset):
                 qsasa_data.append(float(fullprotein_data[i][1]))
 
         return qsasa_data
+
+    def __extract_seq_entropy_data(self, siteresidue_list, profile):
+        '''extracts sequence entropy data from .profile'''
+        # Opening and formatting lists of the probabilities and residues
+        with open(profile) as profile:  # opening .profile file
+            ressingle_list = []
+            probdata_list = []
+            for line in profile:    # extracting relevant information
+                line_list = line.split()
+                residue_type = line_list[0]
+                prob_data = line_list[1:]
+                prob_data = list(map(float, prob_data))
+                ressingle_list.append(residue_type)
+                probdata_list.append(prob_data)
+
+        ressingle_list = ressingle_list[1:]
+        probdata_list = probdata_list[1:]
+
+        # Changing single letter amino acid to triple letter with its corresponding number
+        count = 0
+        restriple_list = []
+        for res in ressingle_list:
+            newres = res.replace(res, self.__amino_single_to_triple(res))
+            count += 1
+            restriple_list.append(newres + str(count))
+
+        # Calculating information entropy
+        with np.errstate(divide='ignore'):      # suppress warning
+            prob_array = np.asarray(probdata_list)
+            log_array = np.log2(prob_array)
+            log_array[~np.isfinite(log_array)] = 0  # change all infinite values to 0
+            entropy_array = log_array * prob_array
+            entropydata_array = np.sum(a=entropy_array, axis=1) * -1
+            entropydata_list = entropydata_array.tolist()
+
+        # Matching amino acids from .mol2 and .profile files and creating dictionary
+        fullprotein_data = dict(zip(restriple_list, entropydata_list))
+        seq_entropy_data = {k: float(fullprotein_data[k]) for k in siteresidue_list if k in fullprotein_data}
+
+        return seq_entropy_data
+
+    def __amino_single_to_triple(self, single):
+        '''converts the single letter amino acid abbreviation to the triple letter abbreviation'''
+        
+        single_to_triple_dict = {'A': 'ALA', 'R': 'ARG', 'N': 'ASN', 'D': 'ASP', 'C': 'CYS',
+                                 'G': 'GLY', 'Q': 'GLN', 'E': 'GLU', 'H': 'HIS', 'I': 'ILE',
+                                 'L': 'LEU', 'K': 'LYS', 'M': 'MET', 'F': 'PHE', 'P': 'PRO',
+                                 'S': 'SER', 'T': 'THR', 'W': 'TRP', 'Y': 'TYR', 'V': 'VAL'}
+        
+        for i in single_to_triple_dict.keys():
+            if i == single:
+                triple = single_to_triple_dict[i]
+
+        return triple
 
 
 def gen_loaders(op, root_dir, pop_dir, profile_dir, training_folds, val_fold, batch_size, threshold, features_to_use, shuffle=True, num_workers=1):

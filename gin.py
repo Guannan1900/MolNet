@@ -205,7 +205,8 @@ if __name__ == "__main__":
     batch_size = 4
     num_workers = batch_size # number of processes assigned to dataloader.
     neural_network_size = 16
-    features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa']
+    # Should be subset of ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
+    features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
     num_features = len(features_to_use)
 
     print('threshold:', threshold)    
