@@ -12,6 +12,7 @@ from dataloader import gen_loaders
 from torch_geometric.nn import GINConv, global_add_pool
 import matplotlib.pyplot as plt
 import numpy as np
+import sklearn.metrics as metrics
 
 
 def get_args():
@@ -112,8 +113,10 @@ def train(epoch, lr_decay_epoch):
     if epoch == lr_decay_epoch:
         for param_group in optimizer.param_groups:
             param_group['lr'] = 0.5 * param_group['lr']
+
     loss_total = 0
-    correct = 0
+    epoch_pred = [] # all the predictions for the epoch
+    epoch_label = [] # all the labels for the epoch
     for data in train_loader:
         data = data.to(device)
         optimizer.zero_grad()
@@ -123,10 +126,18 @@ def train(epoch, lr_decay_epoch):
         loss_total += loss.item() * data.num_graphs
         optimizer.step()
         pred = output.max(dim=1)[1]
-        correct += pred.eq(data.y).sum().item()
+        output_prob = torch.exp(output) # output probabilities of each class
+    
+        pred_cpu = list(pred.cpu().detach().numpy()) # used to compute evaluation metrics
+        label = list(data.y.cpu().detach().numpy()) # used to compute evaluation metrics
+        
+        epoch_pred.extend(pred_cpu)
+        epoch_label.extend(label)
+
+    acc, precision, recall, f1, mcc = compute_metrics(epoch_label, epoch_pred)
     train_loss = loss_total / train_size # averaged training loss
-    acc = correct / train_size # accuracy        
-    return train_loss, acc
+    result_dict = {'acc':acc, 'precision': precision, 'recall': recall, 'f1':f1, 'mcc': mcc, 'loss': train_loss}   
+    return result_dict
 
 
 def validate():
@@ -137,17 +148,27 @@ def validate():
     model.eval()
 
     loss_total = 0
-    correct = 0
+    epoch_pred = [] # all the predictions for the epoch
+    epoch_label = [] # all the labels for the epoch
     for data in val_loader:
         data = data.to(device)
         output = model(data.x, data.edge_index, data.batch)
         loss = F.nll_loss(output, data.y)
         loss_total += loss.item() * data.num_graphs
         pred = output.max(dim=1)[1]
-        correct += pred.eq(data.y).sum().item()
+        output_prob = torch.exp(output) # output probabilities of each class
+        
+        pred_cpu = list(pred.cpu().detach().numpy()) # used to compute evaluation metrics
+        label = list(data.y.cpu().detach().numpy()) # used to compute evaluation metrics
+        
+        epoch_pred.extend(pred_cpu)
+        epoch_label.extend(label)
+
+    acc, precision, recall, f1, mcc = compute_metrics(epoch_label, epoch_pred)
     val_loss = loss_total / val_size # averaged training loss
-    acc = correct / val_size # accuracy        
-    return val_loss, acc
+
+    result_dict = {'acc':acc, 'precision': precision, 'recall': recall, 'f1':f1, 'mcc': mcc, 'loss': val_loss}   
+    return result_dict
 
 
 def plot_loss(train_loss, val_loss, loss_dir, num_epoch):
@@ -184,6 +205,19 @@ def plot_accuracy(train_acc, val_acc, acc_dir, num_epoch):
     plt.savefig(acc_dir)
 
 
+def compute_metrics(label, out):
+    """
+    Compute the evaluation metrics of the model.
+    Both label and out should be converted from Pytorch tensor to numpy arrays containing 0s and 1s.
+    """
+    acc = metrics.accuracy_score(label, out)
+    precision = metrics.precision_score(label,out)
+    recall = metrics.recall_score(label,out)
+    f1 = metrics.f1_score(label,out)
+    mcc = metrics.matthews_corrcoef(label, out)
+    return acc, precision, recall, f1, mcc
+
+
 if __name__ == "__main__":
     torch.manual_seed(42)
     args = get_args()
@@ -200,13 +234,15 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
     threshold = 4.5 # unit: ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
-    num_epoch = 1000 # number of epochs to train
+    num_epoch = 2 # number of epochs to train
     lr_decay_epoch = 800
     batch_size = 4
     num_workers = batch_size # number of processes assigned to dataloader.
     neural_network_size = 16
     # Should be subset of ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
-    features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
+    #features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
+    features_to_use = ['hydrophobicity']
+
     num_features = len(features_to_use)
 
     print('threshold:', threshold)    
@@ -228,23 +264,28 @@ if __name__ == "__main__":
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001, amsgrad=False)
         print('optimizer:')
         print(optimizer)
-        train_losses = []
-        val_losses = []
-        train_accs = []
-        val_accs = []
+        #train_losses = []
+        #val_losses = []
+        #train_accs = []
+        #val_accs = []
         best_val_loss = 9999999
         print('begin training...')
         for epoch in range(1, 1 + num_epoch):
-            train_loss, train_acc = train(epoch, lr_decay_epoch)
-            val_loss, val_acc = validate()
-            print('Epoch: {:03d}, Train Loss: {:.7f}, Train Acc: {:.7f}, Val Loss: {:.7f}, Val Acc: {:.7f}'.format(epoch, train_loss, train_acc, val_loss, val_acc))
-            train_losses.append(train_loss)
-            val_losses.append(val_loss)
-            train_accs.append(train_acc)
-            val_accs.append(val_acc)
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                best_val_loss_dict = {'epoch': epoch, 'train_loss': train_loss, 'train_acc': train_acc, 'val_loss':val_loss, 'val_acc':val_acc}
+            train_results = train(epoch, lr_decay_epoch)
+            val_results = validate()
+            print('epoch: ', epoch)
+            print('train: ', train_results)
+            print('validation: ', val_results)            
+            #train_losses.append(train_results['loss'])
+            #val_losses.append(val_results['loss'])
+            #train_accs.append(train_results['acc'])
+            #val_accs.append(val_results['acc'])
+            if val_results['loss'] < best_val_loss:
+                best_val_loss_dict = {}
+                best_val_loss = val_results['loss']
+                best_val_loss_dict['epoch'] = epoch
+                best_val_loss_dict['train'] = train_results
+                best_val_loss_dict['val'] = val_results
         print('results at minimum val loss:')
         print(best_val_loss_dict)
         results.append(best_val_loss_dict)
@@ -255,27 +296,65 @@ if __name__ == "__main__":
     print('*****************************************************************')
     train_loss = 0
     train_acc = 0
+    train_precision = 0
+    train_recall = 0
+    train_f1 = 0
+    train_mcc =0
+
     val_loss = 0
     val_acc = 0
+    val_precision = 0
+    val_recall = 0
+    val_f1 = 0
+    val_mcc =0
+
     best_val_loss_epochs = []
     for best_val_loss_dict in results:
-        train_loss += best_val_loss_dict['train_loss']
-        train_acc += best_val_loss_dict['train_acc']
-        val_loss += best_val_loss_dict['val_loss']
-        val_acc += best_val_loss_dict['val_acc']
         best_val_loss_epochs.append(best_val_loss_dict['epoch'])
+
+        train_loss += best_val_loss_dict['train']['loss']
+        train_acc += best_val_loss_dict['train']['acc']
+        train_precision += best_val_loss_dict['train']['precision']
+        train_recall += best_val_loss_dict['train']['recall']        
+        train_f1 += best_val_loss_dict['train']['f1']
+        train_mcc += best_val_loss_dict['train']['mcc']    
+
+        val_loss += best_val_loss_dict['val']['loss']
+        val_acc += best_val_loss_dict['val']['acc']
+        val_precision += best_val_loss_dict['val']['precision']
+        val_recall += best_val_loss_dict['val']['recall']        
+        val_f1 += best_val_loss_dict['val']['f1']
+        val_mcc += best_val_loss_dict['val']['mcc']
+
     train_loss = train_loss/5
     train_acc = train_acc/5
+    train_precision = train_precision/5
+    train_recall = train_recall/5
+    train_f1 = train_f1/5
+    train_mcc = train_mcc/5
+
     val_loss = val_loss/5
     val_acc = val_acc/5
-    print('averaged train loss:', train_loss)
-    print('averaged train accuracy:', train_acc)
-    print('averaged validation loss:', val_loss)
-    print('averaged validation accuracy:', val_acc)
+    val_precision = val_precision/5
+    val_recall = val_recall/5
+    val_f1 = val_f1/5
+    val_mcc = val_mcc/5
+    
+    print('averaged performance at best validation loss:')
     print('epochs that have best validation loss:', best_val_loss_epochs)
 
-    '''
-    TO DO:
-    1. Save the model of 5 folds when validation loss is at minimum.
-    2. compute precision, recall, f1, MCC
-    '''
+    print('averaged train loss:', train_loss)
+    print('averaged train accuracy:', train_acc)
+    print('averaged train precision:', train_precision)
+    print('averaged train recall:', train_recall)
+    print('averaged train f1:', train_f1)
+    print('averaged train mcc:', train_mcc)
+
+    print('averaged val loss:', val_loss)
+    print('averaged val accuracy:', val_acc)
+    print('averaged val precision:', val_precision)
+    print('averaged val recall:', val_recall)
+    print('averaged val f1:', val_f1)
+    print('averaged val mcc:', val_mcc)
+
+    
