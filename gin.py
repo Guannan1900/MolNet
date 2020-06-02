@@ -13,6 +13,7 @@ from torch_geometric.nn import GINConv, global_add_pool
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as metrics
+import json
 
 
 def get_args():
@@ -33,7 +34,11 @@ def get_args():
     parser.add_argument('-profile_dir',
                         default='../MolNet-data/profiles/',
                         required=False,
-                        help='directory to load sasa data.')                         
+                        help='directory to load sasa data.')
+    parser.add_argument('-roc_path',
+                        default='./roc/gin_5fold_7.json',
+                        required=False,
+                        help='path of roc data of 5 folds.')                                                 
     parser.add_argument('-num_control',
                         default=1946,
                         required=False,
@@ -150,6 +155,7 @@ def validate():
     loss_total = 0
     epoch_pred = [] # all the predictions for the epoch
     epoch_label = [] # all the labels for the epoch
+    epoch_prob = [] # all the output probabilities
     for data in val_loader:
         data = data.to(device)
         output = model(data.x, data.edge_index, data.batch)
@@ -160,15 +166,18 @@ def validate():
         
         pred_cpu = list(pred.cpu().detach().numpy()) # used to compute evaluation metrics
         label = list(data.y.cpu().detach().numpy()) # used to compute evaluation metrics
-        
+        output_prob_cpu = output_prob.cpu().detach().numpy() # softmax output
+        output_prob_cpu = list(output_prob_cpu[:,1]) # probability of positive class
+
         epoch_pred.extend(pred_cpu)
         epoch_label.extend(label)
-
-    acc, precision, recall, f1, mcc = compute_metrics(epoch_label, epoch_pred)
+        epoch_prob.extend(output_prob_cpu)
+        
     val_loss = loss_total / val_size # averaged training loss
-
+    acc, precision, recall, f1, mcc = compute_metrics(epoch_label, epoch_pred) # evaluation metrics
     result_dict = {'acc':acc, 'precision': precision, 'recall': recall, 'f1':f1, 'mcc': mcc, 'loss': val_loss}   
-    return result_dict
+    roc_dict = {'label':epoch_label, 'prob': epoch_prob}    # data needed to compute roc curve 
+    return result_dict, roc_dict
 
 
 def plot_loss(train_loss, val_loss, loss_dir, num_epoch):
@@ -225,6 +234,7 @@ if __name__ == "__main__":
     root_dir = args.root_dir
     pop_dir = args.pop_dir
     profile_dir = args.profile_dir
+    roc_path = args.roc_path
     print('data directory:', root_dir)
     print('pop directory (for sasa feature):', pop_dir)
     print('profile directory (for sequence_entropy feature):', profile_dir)
@@ -254,6 +264,7 @@ if __name__ == "__main__":
     print('features to use:', features_to_use)
     
     results = []
+    rocs = []
     for val_fold in [1,2,3,4,5]:
         folds = [1, 2, 3, 4, 5]
         folds.remove(val_fold)
@@ -272,7 +283,7 @@ if __name__ == "__main__":
         print('begin training...')
         for epoch in range(1, 1 + num_epoch):
             train_results = train(epoch, lr_decay_epoch)
-            val_results = validate()
+            val_results, roc_dict = validate()
             print('epoch: ', epoch)
             print('train: ', train_results)
             print('validation: ', val_results)            
@@ -286,9 +297,16 @@ if __name__ == "__main__":
                 best_val_loss_dict['epoch'] = epoch
                 best_val_loss_dict['train'] = train_results
                 best_val_loss_dict['val'] = val_results
+
+                fpr, tpr, thresholds = metrics.roc_curve(roc_dict['label'], roc_dict['prob'])
+                fpr = fpr.tolist()
+                tpr = tpr.tolist()
+                thresholds = thresholds.tolist()
+                best_val_loss_roc = {'fpr':fpr, 'tpr':tpr, 'thresholds':thresholds}
         print('results at minimum val loss:')
         print(best_val_loss_dict)
         results.append(best_val_loss_dict)
+        rocs.append(best_val_loss_roc)
         #plot_loss(train_losses, val_losses, './figure/gin_loss_6.png', num_epoch)  
         #plot_accuracy(train_accs, val_accs, './figure/gin_acc_6.png', num_epoch)  
     
@@ -357,4 +375,6 @@ if __name__ == "__main__":
     print('averaged val f1:', val_f1)
     print('averaged val mcc:', val_mcc)
 
+    with open(roc_path, 'w') as fp:
+        json.dump(rocs, fp) # save roc files as a json file
     
