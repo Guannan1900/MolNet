@@ -27,11 +27,15 @@ Note that the mean diameter is inf because there are graphs that are not connect
 
 ## Experiment results
 Talbles below show the performance (validation) of GNNs trained on the datasets pre-divided into 5 folds. 
-1. Control against nucleotide:
-| model | accuracy | precision | recall | F1    | MCC   | AUC   | log                         |
-| GIN   | 0.860    | 0.819     | 0.879  | 0.848 | 0.720 | 0.935 | gin_5fold_control_atp_1.txt |
+1. Control against nucleotide:   
 
-2. Control against heme:
+| model | accuracy | precision | recall | F1 | MCC | AUC | log |   
+| :---:   | :---: | :---: | :---: | :---: | :---: | :---: | :---: |    
+| GIN | 0.860 | 0.819 | 0.879 | 0.848 | 0.720 | 0.935 | gin_5fold_control_atp_1.txt |   
+   
+2. Control against heme:   
+
 | model | accuracy | precision | recall | F1 | MCC | AUC | log |
-|       |          |           |        |    |     |     |     |
+| :---:   | :---: | :---: | :---: | :---: | :---: | :---: | :---: |   
+| GIN |          |           |        |    |     |     |     |
 
