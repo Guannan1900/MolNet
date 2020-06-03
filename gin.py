@@ -244,14 +244,14 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
     threshold = 4.5 # unit: ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
-    num_epoch = 2 # number of epochs to train
-    lr_decay_epoch = 800
+    num_epoch = 1200 # number of epochs to train
+    lr_decay_epoch = 1000
     batch_size = 4
     num_workers = batch_size # number of processes assigned to dataloader.
     neural_network_size = 16
     # Should be subset of ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
-    #features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
-    features_to_use = ['hydrophobicity']
+    features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
+    #features_to_use = ['hydrophobicity']
 
     num_features = len(features_to_use)
 

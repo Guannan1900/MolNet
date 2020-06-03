@@ -46,7 +46,7 @@ def ror_plot(result_dir, model_name, color, dashes, title):
         tprs[-1][0] = 0.0
         roc_auc = auc(fpr, tpr)
         aucs.append(roc_auc)
-        #plt.plot(fpr, tpr, lw=1, alpha=0.3,label='ROC fold %d (AUC = %0.2f)' % (i, roc_auc))
+        plt.plot(fpr, tpr, lw=1, alpha=0.3,label='ROC fold %d (AUC = %0.2f)' % (i, roc_auc))
 
     mean_tpr = np.mean(tprs, axis=0)
     mean_tpr[-1] = 1.0
@@ -54,7 +54,6 @@ def ror_plot(result_dir, model_name, color, dashes, title):
     print('Averaged AUC for {}: {}'.format(model_name, mean_auc))
     std_auc = np.std(aucs)
     plt.plot(mean_fpr, mean_tpr, dashes=dashes, color=color, label=model_name, lw=2, alpha=.8)
-
 
 
 if __name__ == "__main__":
@@ -94,7 +93,7 @@ if __name__ == "__main__":
     plt.legend(loc="lower right")
 
     if op == 'control_vs_heme':
-        plt.savefig('./b.png', bbox_inches = 'tight', dpi=600)
+        plt.savefig('./figure/b.png', bbox_inches = 'tight', dpi=600)
     elif op == 'control_vs_nucleotide':
-        plt.savefig('./a.png', bbox_inches = 'tight', dpi=600)
+        plt.savefig('./figure/a.png', bbox_inches = 'tight', dpi=600)
     plt.show()
