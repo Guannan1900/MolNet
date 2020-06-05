@@ -65,17 +65,17 @@ class Net(torch.nn.Module):
         self.conv1 = GINConv(nn1)
         self.bn1 = torch.nn.BatchNorm1d(dim)
 
-        nn2 = Sequential(Linear(dim, dim), LeakyReLU(), Linear(dim, dim))
-        self.conv2 = GINConv(nn2)
-        self.bn2 = torch.nn.BatchNorm1d(dim)
+        #nn2 = Sequential(Linear(dim, dim), LeakyReLU(), Linear(dim, dim))
+        #self.conv2 = GINConv(nn2)
+        #self.bn2 = torch.nn.BatchNorm1d(dim)
 
-        nn3 = Sequential(Linear(dim, dim), LeakyReLU(), Linear(dim, dim))
-        self.conv3 = GINConv(nn3)
-        self.bn3 = torch.nn.BatchNorm1d(dim)
+        #nn3 = Sequential(Linear(dim, dim), LeakyReLU(), Linear(dim, dim))
+        #self.conv3 = GINConv(nn3)
+        #self.bn3 = torch.nn.BatchNorm1d(dim)
 
-        nn4 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
-        self.conv4 = GINConv(nn4)
-        self.bn4 = torch.nn.BatchNorm1d(dim)
+        #nn4 = Sequential(Linear(dim, dim), LeakyReLU(), Linear(dim, dim))
+        #self.conv4 = GINConv(nn4)
+        #self.bn4 = torch.nn.BatchNorm1d(dim)
 
         #nn5 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
         #self.conv5 = GINConv(nn5)
@@ -89,20 +89,21 @@ class Net(torch.nn.Module):
         self.fc2 = Linear(dim, 2) # binary classification, softmax is used instead of sigmoid here.
 
     def forward(self, x, edge_index, batch):
-        x = F.relu(self.conv1(x, edge_index))
+        x = F.leaky_relu(self.conv1(x, edge_index))
         x = self.bn1(x)
-        x = F.relu(self.conv2(x, edge_index))
-        x = self.bn2(x)
-        x = F.relu(self.conv3(x, edge_index))
-        x = self.bn3(x)
-        x = F.relu(self.conv4(x, edge_index))
-        x = self.bn4(x)
+        #x = F.leaky_relu(self.conv2(x, edge_index))
+        #x = self.bn2(x)
+        #print('weights of conv2 nn:', self.conv1.nn[0].weight.data)
+        #x = F.relu(self.conv3(x, edge_index))
+        #x = self.bn3(x)
+        #x = F.relu(self.conv4(x, edge_index))
+        #x = self.bn4(x)
         #x = F.relu(self.conv5(x, edge_index))
         #x = self.bn5(x)
         #x = F.relu(self.conv6(x, edge_index))
         #x = self.bn6(x)
         x = global_add_pool(x, batch)
-        x = F.relu(self.fc1(x))
+        x = F.leaky_relu(self.fc1(x))
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=-1)
@@ -123,11 +124,19 @@ def train(epoch, lr_decay_epoch):
     epoch_pred = [] # all the predictions for the epoch
     epoch_label = [] # all the labels for the epoch
     for data in train_loader:
+        #print('data.x: ', data.x)
+        #print('data.edge_index: ', data.edge_index)
+        print(data.y)
         data = data.to(device)
         optimizer.zero_grad()
         output = model(data.x, data.edge_index, data.batch)
+        print('output: ', output)
+        #print('label: ', data.y)
         loss = F.nll_loss(output, data.y)
+        #print('loss:', loss)
         loss.backward()
+        print('gradients of conv1 nn[0]:', model.conv1.nn[0].weight.grad)
+        print('gradients of conv1 nn[2]:', model.conv1.nn[2].weight.grad)
         loss_total += loss.item() * data.num_graphs
         optimizer.step()
         pred = output.max(dim=1)[1]
@@ -136,10 +145,14 @@ def train(epoch, lr_decay_epoch):
         pred_cpu = list(pred.cpu().detach().numpy()) # used to compute evaluation metrics
         label = list(data.y.cpu().detach().numpy()) # used to compute evaluation metrics
         
+
+
         epoch_pred.extend(pred_cpu)
         epoch_label.extend(label)
 
     acc, precision, recall, f1, mcc = compute_metrics(epoch_label, epoch_pred)
+    print('loss_total:', loss_total)
+    print('train size: ',train_size)
     train_loss = loss_total / train_size # averaged training loss
     result_dict = {'acc':acc, 'precision': precision, 'recall': recall, 'f1':f1, 'mcc': mcc, 'loss': train_loss}   
     return result_dict
@@ -246,7 +259,7 @@ if __name__ == "__main__":
     threshold = 4.5 # unit: ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
     num_epoch = 1200 # number of epochs to train
     lr_decay_epoch = 1000
-    batch_size = 4
+    batch_size = 2
     num_workers = batch_size # number of processes assigned to dataloader.
     neural_network_size = 16
     # Should be subset of ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
@@ -272,7 +285,7 @@ if __name__ == "__main__":
         model = Net(num_features=num_features, dim=neural_network_size).to(device)
         print('model architecture:')
         print(model)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001, amsgrad=False)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.0001, amsgrad=False)
         print('optimizer:')
         print(optimizer)
         #train_losses = []
