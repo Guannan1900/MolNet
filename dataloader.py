@@ -222,9 +222,14 @@ class MolDatasetCV(Dataset):
         atoms['sasa'] = qsasa_data
         seq_entropy_data = self.__extract_seq_entropy_data(siteresidue_list, profile_path) # sequence entropy data with subst_name as keys
         atoms['sequence_entropy'] = atoms['subst_name'].apply(lambda x: seq_entropy_data[x])
-        print(mol_path)
+        
         #print(atoms)
         #print(label)
+
+        if atoms.isnull().values.any():
+            print('invalid input data (containing nan):')
+            print(mol_path)
+            #print(atoms)
         atoms_graph = self.__form_graph(atoms, self.threshold, label)
         return atoms_graph
 
@@ -391,7 +396,7 @@ if __name__ == "__main__":
     num_control = args.num_control
     num_heme = args.num_heme
     num_nucleotide = args.num_nucleotide
-    features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center']
+    features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
     threshold = 4.5 # ångström
 
     # dataloarders
@@ -400,7 +405,15 @@ if __name__ == "__main__":
     folds.remove(val_fold)
     train_loader, val_loader, train_size, val_size = gen_loaders(op, root_dir, pop_dir, profile_dir, folds, val_fold, batch_size=batch_size, threshold=4.5, features_to_use=features_to_use, shuffle=True, num_workers=1)
 
+    i = 0
+    for data in train_loader:
+        #print('--------------------------------')
+        i += 1
+        
+    i = 0
     for data in val_loader:
-        print(data)
+        i += 1
+        #print('--------------------------------')
+        #print(data)
         #print('y:', data['y'])
-        break
+        #break
