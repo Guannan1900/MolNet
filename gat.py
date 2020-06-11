@@ -59,7 +59,8 @@ class Net(torch.nn.Module):
         super(Net, self).__init__()
         self.conv1 = GATConv(in_channels = num_features, out_channels = dim, heads=1)
         self.conv2 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1)
-        self.conv3 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1, concat=True)
+        self.conv3 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1)
+        self.conv4 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1, concat=True)
 
         self.fc1 = Linear(dim, dim)
         self.fc2 = Linear(dim, 2) # binary classification, softmax is used instead of sigmoid here.
@@ -71,9 +72,12 @@ class Net(torch.nn.Module):
         
         x = F.leaky_relu(self.conv2(x, data.edge_index))
         #x = F.dropout(x, p=0.5, training=self.training)
-        
+
         x = F.leaky_relu(self.conv3(x, data.edge_index))
-        #x = F.dropout(x, p=0.5, training=self.training)
+        #x = F.dropout(x, p=0.5, training=self.training)        
+        
+        x = F.leaky_relu(self.conv4(x, data.edge_index))
+        x = F.dropout(x, p=0.5, training=self.training)
         
         x = global_add_pool(x, data.batch)
         x = F.leaky_relu(self.fc1(x))
