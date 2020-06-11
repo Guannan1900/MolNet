@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn import Sequential, Linear, ReLU, LeakyReLU
 from dataloader import gen_loaders
-from torch_geometric.nn import GINConv, global_add_pool
+from torch_geometric.nn import GATConv, global_add_pool
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as metrics
@@ -57,56 +57,30 @@ def get_args():
 class Net(torch.nn.Module):
     def __init__(self, num_features, dim):
         super(Net, self).__init__()
-        '''
-        num_features = dataset.num_features
-        dim = 32
-        '''
-        nn1 = Sequential(Linear(num_features, dim), LeakyReLU(), Linear(dim, dim))
-        self.conv1 = GINConv(nn1)
-        self.bn1 = torch.nn.BatchNorm1d(dim)
-
-        nn2 = Sequential(Linear(dim, dim), LeakyReLU(), Linear(dim, dim))
-        self.conv2 = GINConv(nn2)
-        self.bn2 = torch.nn.BatchNorm1d(dim)
-
-        nn3 = Sequential(Linear(dim, dim), LeakyReLU(), Linear(dim, dim))
-        self.conv3 = GINConv(nn3)
-        self.bn3 = torch.nn.BatchNorm1d(dim)
-
-        nn4 = Sequential(Linear(dim, dim), LeakyReLU(), Linear(dim, dim))
-        self.conv4 = GINConv(nn4)
-        self.bn4 = torch.nn.BatchNorm1d(dim)
-
-        #nn5 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
-        #self.conv5 = GINConv(nn5)
-        #self.bn5 = torch.nn.BatchNorm1d(dim)
-
-        #nn6 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim))
-        #self.conv6 = GINConv(nn6)
-        #self.bn6 = torch.nn.BatchNorm1d(dim)
+        self.conv1 = GATConv(in_channels = num_features, out_channels = dim, heads=1)
+        self.conv2 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1)
+        self.conv3 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1, concat=True)
 
         self.fc1 = Linear(dim, dim)
         self.fc2 = Linear(dim, 2) # binary classification, softmax is used instead of sigmoid here.
 
-    def forward(self, x, edge_index, batch):
-        x = F.leaky_relu(self.conv1(x, edge_index))
-        x = self.bn1(x)
-        x = F.leaky_relu(self.conv2(x, edge_index))
-        x = self.bn2(x)
-        #print('weights of conv2 nn:', self.conv1.nn[0].weight.data)
-        x = F.leaky_relu(self.conv3(x, edge_index))
-        x = self.bn3(x)
-        x = F.leaky_relu(self.conv4(x, edge_index))
-        x = self.bn4(x)
-        #x = F.relu(self.conv5(x, edge_index))
-        #x = self.bn5(x)
-        #x = F.relu(self.conv6(x, edge_index))
-        #x = self.bn6(x)
-        x = global_add_pool(x, batch)
+    def forward(self, data):
+        #x = F.dropout(data.x, p=0.5, training=self.training)
+        x = F.leaky_relu(self.conv1(data.x, data.edge_index))
+        #x = F.dropout(x, p=0.5, training=self.training)
+        
+        x = F.leaky_relu(self.conv2(x, data.edge_index))
+        #x = F.dropout(x, p=0.5, training=self.training)
+        
+        x = F.leaky_relu(self.conv3(x, data.edge_index))
+        #x = F.dropout(x, p=0.5, training=self.training)
+        
+        x = global_add_pool(x, data.batch)
         x = F.leaky_relu(self.fc1(x))
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.fc2(x)
-        return F.log_softmax(x, dim=-1)
+        x = F.log_softmax(x, dim=-1)
+        return x
 
 
 def train(epoch, lr_decay_epoch):
@@ -129,7 +103,8 @@ def train(epoch, lr_decay_epoch):
         #print(data.y)
         data = data.to(device)
         optimizer.zero_grad()
-        output = model(data.x, data.edge_index, data.batch)
+        #output = model(data.x, data.edge_index, data.batch)
+        output = model(data)
         loss = F.nll_loss(output, data.y)
         loss.backward()
         #print('gradients of conv1 nn[0]:', model.conv1.nn[0].weight.grad)
@@ -164,7 +139,7 @@ def validate():
     epoch_prob = [] # all the output probabilities
     for data in val_loader:
         data = data.to(device)
-        output = model(data.x, data.edge_index, data.batch)
+        output = model(data)
         loss = F.nll_loss(output, data.y)
         loss_total += loss.item() * data.num_graphs
         pred = output.max(dim=1)[1]
@@ -252,7 +227,7 @@ if __name__ == "__main__":
     threshold = 4.5 # unit: ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
     num_epoch = 600 # number of epochs to train
     lr_decay_epoch = 500
-    batch_size = 16
+    batch_size = 8
     num_workers = batch_size # number of processes assigned to dataloader.
     neural_network_size = 16
     # Should be subset of ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
