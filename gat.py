@@ -57,8 +57,8 @@ def get_args():
 class Net(torch.nn.Module):
     def __init__(self, num_features, dim):
         super(Net, self).__init__()
-        self.conv1 = GATConv(in_channels = num_features, out_channels = dim, heads=1)
-        self.conv2 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1)
+        self.conv1 = GATConv(in_channels = num_features, out_channels = dim, heads=2)
+        self.conv2 = GATConv(in_channels = dim * 2, out_channels = dim, heads=1)
         self.conv3 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1)
         self.conv4 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1, concat=True)
 

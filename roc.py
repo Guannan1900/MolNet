@@ -66,10 +66,11 @@ if __name__ == "__main__":
 
     if op == 'control_vs_heme':
         title = '(b)'
-        gin_dir = '../bionoi_cnn_homology_reduced/results/control_vs_heme_cv_9thrun.json'
+        gin_dir = './roc/gin_5fold_control_heme_0.json'
     elif op == 'control_vs_nucleotide':
         title = '(a)'
-        gin_dir = './roc/gin_5fold_7.json'
+        #gin_dir = './roc/gin_5fold_7.json'
+        
 
 
     dirs = [gin_dir]
@@ -93,7 +94,7 @@ if __name__ == "__main__":
     plt.legend(loc="lower right")
 
     if op == 'control_vs_heme':
-        plt.savefig('./figure/b.png', bbox_inches = 'tight', dpi=600)
+        plt.savefig('./figure/gin_5fold_control_heme_0.png', bbox_inches = 'tight', dpi=600)
     elif op == 'control_vs_nucleotide':
         plt.savefig('./figure/a.png', bbox_inches = 'tight', dpi=600)
     plt.show()
