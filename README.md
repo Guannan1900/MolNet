@@ -32,7 +32,7 @@ Talbles below show the performance (validation) of GNNs trained on the datasets 
 | model | accuracy | precision | recall | F1 | MCC | AUC | log |   
 | :---:   | :---: | :---: | :---: | :---: | :---: | :---: | :---: |    
 | GIN | 0.860 | 0.819 | 0.879 | 0.848 | 0.720 | 0.935 | gin_5fold_control_atp_1.txt |   
-| GAT |       |       |       |       |       |       |                             |
+| GAT | 0.866 | 0.855 | 0.842 | 0.847 | 0.729 | 0.938 | gat_5fold_control_atp_0.txt |
    
 2. Control against heme:   
 

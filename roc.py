@@ -69,7 +69,7 @@ if __name__ == "__main__":
         gin_dir = './roc/gin_5fold_control_heme_0.json'
     elif op == 'control_vs_nucleotide':
         title = '(a)'
-        #gin_dir = './roc/gin_5fold_7.json'
+        gin_dir = './roc/gat_5fold_control_atp_0.json'
         
 
 
@@ -96,5 +96,5 @@ if __name__ == "__main__":
     if op == 'control_vs_heme':
         plt.savefig('./figure/gin_5fold_control_heme_0.png', bbox_inches = 'tight', dpi=600)
     elif op == 'control_vs_nucleotide':
-        plt.savefig('./figure/a.png', bbox_inches = 'tight', dpi=600)
+        plt.savefig('./figure/gat_5fold_control_atp_0.png', bbox_inches = 'tight', dpi=600)
     plt.show()

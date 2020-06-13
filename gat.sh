@@ -1,0 +1,2 @@
+nohup python gat.py -op control_vs_nucleotide -roc_path ./roc/gat_5fold_control_atp_0.json &> ./log/gat_5fold_control_atp_0.txt 2>&1
+nohup python gat.py -op control_vs_heme -roc_path ./roc/gat_5fold_control_heme_0.json &> ./log/gat_5fold_control_heme_0.txt 2>&1

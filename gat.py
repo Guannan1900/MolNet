@@ -57,8 +57,8 @@ def get_args():
 class Net(torch.nn.Module):
     def __init__(self, num_features, dim):
         super(Net, self).__init__()
-        self.conv1 = GATConv(in_channels = num_features, out_channels = dim, heads=2)
-        self.conv2 = GATConv(in_channels = dim * 2, out_channels = dim, heads=1)
+        self.conv1 = GATConv(in_channels = num_features, out_channels = dim, heads=4)
+        self.conv2 = GATConv(in_channels = dim * 4, out_channels = dim, heads=1)
         self.conv3 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1)
         self.conv4 = GATConv(in_channels = dim * 1, out_channels = dim, heads=1, concat=True)
 
@@ -74,7 +74,7 @@ class Net(torch.nn.Module):
         #x = F.dropout(x, p=0.5, training=self.training)
 
         x = F.leaky_relu(self.conv3(x, data.edge_index))
-        #x = F.dropout(x, p=0.5, training=self.training)        
+        x = F.dropout(x, p=0.5, training=self.training)        
         
         x = F.leaky_relu(self.conv4(x, data.edge_index))
         x = F.dropout(x, p=0.5, training=self.training)
@@ -229,10 +229,10 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # detect cpu or gpu
 
     threshold = 4.5 # unit: ångström. hyper-parameter for forming graph, distance thresh hold of forming edge.
-    num_epoch = 600 # number of epochs to train
-    lr_decay_epoch = 500
-    batch_size = 8
-    num_workers = batch_size # number of processes assigned to dataloader.
+    num_epoch = 400 # number of epochs to train
+    lr_decay_epoch = 350
+    batch_size = 16
+    num_workers = 8 # number of processes to load data
     neural_network_size = 16
     # Should be subset of ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
     features_to_use = ['charge', 'hydrophobicity', 'binding_probability', 'distance_to_center', 'sasa', 'sequence_entropy']
