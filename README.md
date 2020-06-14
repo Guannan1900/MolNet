@@ -39,5 +39,5 @@ Talbles below show the performance (validation) of GNNs trained on the datasets 
 | model | accuracy | precision | recall | F1 | MCC | AUC | log |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |   
 | GIN | 0.945 | 0.908 | 0.849 | 0.876 | 0.843 | 0.977 | gin_5fold_control_heme_0.txt |
-| GAT |       |       |       |       |       |       |                              |
+| GAT | 0.940 | 0.920 | 0.811 | 0.859 | 0.826 | 0.954 | gat_5fold_control_heme_0.txt |
 
